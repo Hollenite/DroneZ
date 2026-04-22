@@ -1,0 +1,22 @@
+============================= test session starts =============================
+platform win32 -- Python 3.10.11, pytest-9.0.2, pluggy-1.6.0 -- C:\Users\Ariyan\AppData\Local\Programs\Python\Python310\python.exe
+cachedir: .pytest_cache
+rootdir: D:\PROJECTS\meta-hackathon-round2\DroneZ
+plugins: anyio-4.13.0
+collecting ... collected 18 items
+
+tests/test_env_actions.py::test_valid_assign_delivery_advances_tick PASSED [  5%]
+tests/test_env_actions.py::test_invalid_action_returns_penalty_without_advancing_tick PASSED [ 11%]
+tests/test_env_actions.py::test_reserve_charger_tracks_station_reservation PASSED [ 16%]
+tests/test_env_actions.py::test_delay_order_marks_order_for_recovery PASSED [ 22%]
+tests/test_env_actions.py::test_hold_and_resume_fleet_toggle_zone_state PASSED [ 27%]
+tests/test_env_actions.py::test_reroute_updates_visible_corridor_and_path PASSED [ 33%]
+tests/test_env_actions.py::test_swap_assignments_cross_links_orders_and_drones PASSED [ 38%]
+tests/test_policies.py::test_policies_return_valid_action_shapes PASSED  [ 44%]
+tests/test_policies.py::test_policies_never_select_relay_for_assignment PASSED [ 50%]
+tests/test_policies.py::test_heuristic_prefers_charging_for_low_battery_drone PASSED [ 55%]
+tests/test_policies.py::test_policies_choose_explicit_delivery_attempt_when_ready PASSED [ 61%]
+tests/test_policies.py::test_heuristic_chooses_reroute_for_no_fly_target PASSED [ 66%]
+tests/test_policies.py::test_policies_are_deterministic_for_same_observation PASSED [ 72%]
+tests/test_benchmark_flow.py::test_run_episode_returns_expected_summary_fields PASSED [ 77%]
+tests/test_benchmark_flow.py::test_demo_comparison_returns_aligned_traces 

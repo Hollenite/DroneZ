@@ -24,7 +24,7 @@ from .city import build_city
 from .delivery_logic import resolve_delivery_attempts
 from .disruptions import evolve_disruptions
 from .scripted_events import apply_scripted_events
-from .fleet import advance_fleet_tick, apply_relay_effect, assign_order, build_fleet, send_to_charge
+from .fleet import advance_fleet_tick, apply_relay_effect, assign_order, build_fleet, estimate_eta, send_to_charge
 from .hidden_dynamics import HiddenState, build_hidden_state, update_hidden_state
 from .orders import build_orders, tick_order_deadlines, update_customer_availability
 
@@ -104,6 +104,8 @@ class SimulatorState:
     just_unnecessary_delay: int = 0
     just_unnecessary_hold: int = 0
     just_reserved_charge_queue_miss: int = 0
+    just_reroutes: int = 0
+    just_helpful_reroutes: int = 0
     charging_queue_order: list[str] = field(default_factory=list)
     delivery_attempt_required: set[str] = field(default_factory=set)
     auto_attempt_enabled: bool = False
@@ -185,6 +187,8 @@ class SimulatorEngine:
         state.just_unnecessary_delay = 0
         state.just_unnecessary_hold = 0
         state.just_reserved_charge_queue_miss = 0
+        state.just_reroutes = 0
+        state.just_helpful_reroutes = 0
         reward_inputs = {
             "deliveries_completed": 0.0,
             "urgent_successes": 0.0,
@@ -344,6 +348,22 @@ class SimulatorEngine:
                 state.delivery_attempt_required.discard(order.order_id)
                 events.extend(assign_order(drone, order.order_id, order.zone_id, state.sectors))
 
+        elif action_type == ActionType.REROUTE:
+            drone = next((item for item in state.fleet if item.drone_id == action["drone_id"]), None)
+            if drone and drone.assigned_order_id and drone.target_zone:
+                corridor = action["corridor"]
+                sector = next((item for item in state.sectors if item.zone_id == drone.target_zone), None)
+                previous_eta = drone.eta or estimate_eta(drone, drone.target_zone, state.sectors)
+                previous_corridor = drone.active_corridor or "direct"
+                drone.active_corridor = corridor
+                drone.flight_path = [drone.current_zone, corridor, drone.target_zone]
+                drone.eta = estimate_eta(drone, drone.target_zone, state.sectors, corridor)
+                if corridor == previous_corridor or (previous_eta is not None and drone.eta >= previous_eta):
+                    state.just_reroutes += 1
+                elif sector is not None and (sector.is_no_fly or sector.operations_paused or sector.congestion_score >= 0.4):
+                    state.just_helpful_reroutes += 1
+                events.append(f"{drone.drone_id} rerouted via {corridor} toward {drone.target_zone}.")
+
         elif action_type == ActionType.RETURN_TO_CHARGE:
             drone = next((item for item in state.fleet if item.drone_id == action["drone_id"]), None)
             station = next((item for item in state.charging_stations if item.station_id == action["station_id"]), None)
@@ -392,6 +412,23 @@ class SimulatorEngine:
                     order.assigned_drone_id = None
                 state.pending_recovery_orders.add(order.order_id)
                 events.append(f"{order.order_id} was delayed for replanning.")
+
+        elif action_type == ActionType.SWAP_ASSIGNMENTS:
+            drone_a = next((item for item in state.fleet if item.drone_id == action["drone_a"]), None)
+            drone_b = next((item for item in state.fleet if item.drone_id == action["drone_b"]), None)
+            if drone_a and drone_b and drone_a.assigned_order_id and drone_b.assigned_order_id:
+                order_a = next((item for item in state.orders if item.order_id == drone_a.assigned_order_id), None)
+                order_b = next((item for item in state.orders if item.order_id == drone_b.assigned_order_id), None)
+                if order_a and order_b:
+                    order_a.assigned_drone_id = drone_b.drone_id
+                    order_b.assigned_drone_id = drone_a.drone_id
+                    events.extend(assign_order(drone_a, order_b.order_id, order_b.zone_id, state.sectors, drone_a.active_corridor))
+                    events.extend(assign_order(drone_b, order_a.order_id, order_a.zone_id, state.sectors, drone_b.active_corridor))
+                    order_a.status = "assigned"
+                    order_b.status = "assigned"
+                    state.delivery_attempt_required.discard(order_a.order_id)
+                    state.delivery_attempt_required.discard(order_b.order_id)
+                    events.append(f"{drone_a.drone_id} and {drone_b.drone_id} swapped assignments.")
 
         elif action_type == ActionType.ATTEMPT_DELIVERY:
             drone = next((item for item in state.fleet if item.drone_id == action["drone_id"]), None)
@@ -522,4 +559,8 @@ class SimulatorEngine:
             negative["congestion_from_poor_allocation"] = state.just_congestion_penalty * self.reward_weights.negative["congestion_from_poor_allocation"]
         if state.just_overloaded_assignments:
             negative["overloaded_assignment"] = state.just_overloaded_assignments * self.reward_weights.negative["overloaded_assignment"]
+        if state.just_reroutes:
+            negative["unnecessary_reroute"] = state.just_reroutes * self.reward_weights.negative["unnecessary_reroute"]
+        if state.just_helpful_reroutes:
+            positive["regulatory_compliance"] = positive.get("regulatory_compliance", 0.0) + state.just_helpful_reroutes * self.reward_weights.positive["regulatory_compliance"]
         return RewardBreakdown.from_components(positive=positive, negative=negative)

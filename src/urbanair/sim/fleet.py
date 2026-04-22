@@ -40,7 +40,7 @@ def build_fleet(task_config: TaskConfig, fleet_profiles: dict[DroneType, FleetPr
     return fleet
 
 
-def estimate_eta(drone: DroneState, destination_zone: str, sectors: list[SectorState]) -> int:
+def estimate_eta(drone: DroneState, destination_zone: str, sectors: list[SectorState], corridor: str | None = None) -> int:
     sector = next((item for item in sectors if item.zone_id == destination_zone), None)
     congestion = sector.congestion_score if sector else 0.0
     weather_penalty = 1 if sector and sector.weather in {WeatherSeverity.HEAVY_RAIN, WeatherSeverity.STORM} else 0
@@ -49,15 +49,31 @@ def estimate_eta(drone: DroneState, destination_zone: str, sectors: list[SectorS
         base += 1
     if drone.drone_type == DroneType.FAST_LIGHT:
         base = max(1, base - 1)
+
+    corridor = corridor or drone.active_corridor or "direct"
+    if corridor == "weather_avoid":
+        base += 1
+        if weather_penalty:
+            base = max(1, base - 1)
+    elif corridor == "congestion_avoid":
+        base += 1
+        if congestion >= 0.3:
+            base = max(1, base - 1)
+    elif corridor == "safe":
+        base += 1
+        if sector and not sector.is_no_fly and not sector.operations_paused:
+            base = max(1, base - 1)
     return base
 
 
-def assign_order(drone: DroneState, order_id: str, destination_zone: str, sectors: list[SectorState]) -> list[str]:
+def assign_order(drone: DroneState, order_id: str, destination_zone: str, sectors: list[SectorState], corridor: str | None = None) -> list[str]:
     drone.assigned_order_id = order_id
     drone.status = DroneStatus.ASSIGNED
     drone.target_zone = destination_zone
-    drone.eta = estimate_eta(drone, destination_zone, sectors)
-    return [f"{drone.drone_id} assigned to {order_id} with ETA {drone.eta}."]
+    drone.active_corridor = corridor or "direct"
+    drone.flight_path = [drone.current_zone, drone.active_corridor, destination_zone]
+    drone.eta = estimate_eta(drone, destination_zone, sectors, drone.active_corridor)
+    return [f"{drone.drone_id} assigned to {order_id} via {drone.active_corridor} with ETA {drone.eta}."]
 
 
 def send_to_charge(drone: DroneState, station: ChargingStationState, reserve_only: bool = False) -> list[str]:

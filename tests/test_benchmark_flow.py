@@ -41,4 +41,4 @@ def test_benchmark_runs_are_reproducible() -> None:
 def test_run_episode_trace_captures_new_action_types() -> None:
     result = run_episode(HeuristicPolicy(), "demo", max_steps=10)
 
-    assert any(step["action"]["action"] in {"attempt_delivery", "reserve_charger", "fallback_to_locker", "hold_fleet", "resume_operations"} for step in result["trace"])
+    assert any(step["action"]["action"] in {"attempt_delivery", "reserve_charger", "fallback_to_locker", "hold_fleet", "resume_operations", "reroute", "swap_assignments"} for step in result["trace"])

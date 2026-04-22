@@ -51,6 +51,18 @@ class HeuristicPolicy(Policy):
             return {"action": "resume_operations", "params": {"zone_id": sorted(held_zones)[0]}}
 
         unsafe_sector = next((sector for sector in sectors.values() if sector["is_no_fly"] and sector["zone_id"] != "hub"), None)
+        reroute_candidate = next(
+            (
+                drone
+                for drone in fleet
+                if drone.get("target_zone")
+                and drone["status"] in {"assigned", "in_flight"}
+                and sectors.get(drone["target_zone"], {}).get("is_no_fly")
+            ),
+            None,
+        )
+        if reroute_candidate is not None:
+            return {"action": "reroute", "params": {"drone_id": reroute_candidate["drone_id"], "corridor": "safe"}}
         if unsafe_sector is not None:
             active_zone_drone = next((drone for drone in fleet if drone["current_zone"] == unsafe_sector["zone_id"] and drone["status"] in {"idle", "holding"}), None)
             if active_zone_drone is not None:
@@ -65,6 +77,10 @@ class HeuristicPolicy(Policy):
             order = next((item for item in orders if item["order_id"] == attempt_drone["assigned_order_id"]), None)
             mode = "locker" if order and order["recipient_availability"] == "unavailable" else "handoff"
             return {"action": "attempt_delivery", "params": {"drone_id": attempt_drone["drone_id"], "mode": mode}}
+
+        swap_candidate = _select_swap_candidate(fleet, orders, sectors)
+        if swap_candidate is not None:
+            return {"action": "swap_assignments", "params": swap_candidate}
 
         stale_order = next((order for order in orders if order["status"] in {"deferred", "delivery_attempted"}), None)
         if stale_order is not None and stale_order["priority"] in {"urgent", "medical"}:
@@ -137,6 +153,28 @@ def _select_recovery_order(orders: list[dict[str, Any]]) -> dict[str, Any] | Non
         ),
         None,
     )
+
+
+def _select_swap_candidate(
+    fleet: list[dict[str, Any]],
+    orders: list[dict[str, Any]],
+    sectors: dict[str, dict[str, Any]],
+) -> dict[str, str] | None:
+    assigned = [drone for drone in fleet if drone.get("assigned_order_id") and drone["status"] == "assigned"]
+    orders_by_id = {order["order_id"]: order for order in orders}
+    for index, drone_a in enumerate(assigned):
+        order_a = orders_by_id.get(drone_a["assigned_order_id"])
+        if order_a is None:
+            continue
+        for drone_b in assigned[index + 1 :]:
+            order_b = orders_by_id.get(drone_b["assigned_order_id"])
+            if order_b is None:
+                continue
+            if order_a["package_weight"] > drone_b["payload_capacity"] or order_b["package_weight"] > drone_a["payload_capacity"]:
+                continue
+            if _score_assignment(drone_a, order_b, sectors.get(order_b["zone_id"])) + _score_assignment(drone_b, order_a, sectors.get(order_a["zone_id"])) > _score_assignment(drone_a, order_a, sectors.get(order_a["zone_id"])) + _score_assignment(drone_b, order_b, sectors.get(order_b["zone_id"])) + 8:
+                return {"drone_a": drone_a["drone_id"], "drone_b": drone_b["drone_id"]}
+    return None
 
 
 def _priority_rank(priority: str) -> int:

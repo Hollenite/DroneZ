@@ -50,6 +50,20 @@ def test_policies_choose_explicit_delivery_attempt_when_ready() -> None:
     assert action["params"]["drone_id"] == drone["drone_id"]
 
 
+def test_heuristic_chooses_reroute_for_no_fly_target() -> None:
+    env = DroneZEnvironment()
+    observation, info = env.reset("easy")
+    drone = next(drone for drone in observation["fleet"] if drone["drone_type"] != "relay")
+    drone["status"] = "assigned"
+    drone["assigned_order_id"] = "O1"
+    drone["target_zone"] = "Z1"
+    observation["city"]["sectors"][1]["is_no_fly"] = True
+    observation["city"]["sectors"][1]["zone_id"] = "Z1"
+
+    action = HeuristicPolicy().choose_action(observation, info)
+    assert action["action"] == "reroute"
+
+
 def test_policies_are_deterministic_for_same_observation() -> None:
     env = DroneZEnvironment()
     observation, info = env.reset("easy")

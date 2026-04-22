@@ -36,6 +36,7 @@ class DroneState(BaseModel):
     total_flight_ticks: int = Field(default=0, ge=0)
     home_zone: str = "hub"
     target_zone: str | None = None
+    active_corridor: str | None = None
     flight_path: list[str] = Field(default_factory=list)
 
 

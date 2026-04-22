@@ -66,7 +66,7 @@ def build_summary(state, fleet: list[dict[str, object]], orders: list[dict[str, 
     lines.append("FLEET:")
     for drone in fleet:
         lines.append(
-            f"- {drone['drone_id']} | type={drone['drone_type']} | battery={drone['battery']} | zone={drone['current_zone']} | assigned={drone['assigned_order_id']} | eta={drone['eta']} | risk={drone['health_risk']} | hold_reason={drone['hold_reason']}"
+            f"- {drone['drone_id']} | type={drone['drone_type']} | battery={drone['battery']} | zone={drone['current_zone']} | assigned={drone['assigned_order_id']} | eta={drone['eta']} | target={drone['target_zone']} | corridor={drone['active_corridor']} | risk={drone['health_risk']} | hold_reason={drone['hold_reason']}"
         )
 
     lines.append("ORDERS:")
@@ -109,6 +109,9 @@ def _serialize_drone(drone) -> dict[str, object]:
         "communication_strength": drone.communication_strength,
         "reserved_station_id": drone.reserved_station_id,
         "hold_reason": drone.hold_reason,
+        "target_zone": drone.target_zone,
+        "active_corridor": drone.active_corridor,
+        "flight_path": list(drone.flight_path),
     }
 
 

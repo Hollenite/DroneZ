@@ -5,6 +5,8 @@ from typing import Any
 
 from ..enums import ActionType, DroneStatus, DroneType
 
+_VALID_REROUTE_CORRIDORS = {"direct", "weather_avoid", "congestion_avoid", "safe"}
+
 
 _ACTION_PARAMETERS: dict[ActionType, tuple[str, ...]] = {
     ActionType.ASSIGN_DELIVERY: ("drone_id", "order_id"),
@@ -21,10 +23,12 @@ _ACTION_PARAMETERS: dict[ActionType, tuple[str, ...]] = {
 }
 SUPPORTED_ACTIONS = (
     ActionType.ASSIGN_DELIVERY,
+    ActionType.REROUTE,
     ActionType.RETURN_TO_CHARGE,
     ActionType.RESERVE_CHARGER,
     ActionType.DELAY_ORDER,
     ActionType.PRIORITIZE_ORDER,
+    ActionType.SWAP_ASSIGNMENTS,
     ActionType.ATTEMPT_DELIVERY,
     ActionType.FALLBACK_TO_LOCKER,
     ActionType.HOLD_FLEET,
@@ -108,6 +112,26 @@ class ActionRouter:
 
         return self._valid(ActionType.ASSIGN_DELIVERY, {"drone_id": drone.drone_id, "order_id": order.order_id})
 
+    def _validate_reroute(self, state, params: dict[str, Any]) -> RoutedAction:
+        drone = self._get_drone(state, params["drone_id"])
+        if drone is None:
+            return RoutedAction.invalid("reroute", params, "unknown_drone", f"Drone '{params['drone_id']}' does not exist.")
+        if drone.drone_type == DroneType.RELAY:
+            return RoutedAction.invalid("reroute", params, "invalid_drone_type", "Relay drones cannot be rerouted for deliveries.")
+        if drone.status not in {DroneStatus.ASSIGNED, DroneStatus.IN_FLIGHT}:
+            return RoutedAction.invalid("reroute", params, "drone_unavailable", f"Drone '{drone.drone_id}' is not actively carrying an assignment.")
+        if drone.assigned_order_id is None or drone.eta == 0:
+            return RoutedAction.invalid("reroute", params, "reroute_window_closed", f"Drone '{drone.drone_id}' cannot be rerouted at the delivery-attempt boundary.")
+        if params["corridor"] not in _VALID_REROUTE_CORRIDORS:
+            return RoutedAction.invalid("reroute", params, "invalid_corridor", f"Unsupported corridor '{params['corridor']}'.")
+        if drone.target_zone is None:
+            return RoutedAction.invalid("reroute", params, "missing_target_zone", f"Drone '{drone.drone_id}' has no active destination.")
+        sector = self._get_sector(state, drone.target_zone)
+        if sector is not None and sector.operations_paused:
+            return RoutedAction.invalid("reroute", params, "zone_paused", f"Zone '{sector.zone_id}' is paused for routing.")
+
+        return self._valid(ActionType.REROUTE, {"drone_id": drone.drone_id, "corridor": params["corridor"]})
+
     def _validate_return_to_charge(self, state, params: dict[str, Any]) -> RoutedAction:
         drone = self._get_drone(state, params["drone_id"])
         if drone is None:
@@ -149,6 +173,34 @@ class ActionRouter:
         if isinstance(order, RoutedAction):
             return order
         return self._valid(ActionType.PRIORITIZE_ORDER, {"order_id": order.order_id})
+
+    def _validate_swap_assignments(self, state, params: dict[str, Any]) -> RoutedAction:
+        drone_a = self._get_drone(state, params["drone_a"])
+        drone_b = self._get_drone(state, params["drone_b"])
+        if drone_a is None or drone_b is None:
+            return RoutedAction.invalid("swap_assignments", params, "unknown_drone", "Both drones must exist for swap_assignments.")
+        if drone_a.drone_id == drone_b.drone_id:
+            return RoutedAction.invalid("swap_assignments", params, "same_drone", "swap_assignments requires two distinct drones.")
+        if drone_a.drone_type == DroneType.RELAY or drone_b.drone_type == DroneType.RELAY:
+            return RoutedAction.invalid("swap_assignments", params, "invalid_drone_type", "Relay drones cannot participate in swap_assignments.")
+        if drone_a.status not in {DroneStatus.ASSIGNED, DroneStatus.IN_FLIGHT} or drone_b.status not in {DroneStatus.ASSIGNED, DroneStatus.IN_FLIGHT}:
+            return RoutedAction.invalid("swap_assignments", params, "drone_unavailable", "Both drones must be actively assigned before swapping.")
+        if drone_a.assigned_order_id is None or drone_b.assigned_order_id is None:
+            return RoutedAction.invalid("swap_assignments", params, "missing_assignment", "Both drones must have active assignments.")
+        if drone_a.status == DroneStatus.IN_FLIGHT or drone_b.status == DroneStatus.IN_FLIGHT:
+            return RoutedAction.invalid("swap_assignments", params, "midflight_swap_unsupported", "swap_assignments only supports pre-delivery assigned drones in this pass.")
+        order_a = self._get_open_order(state, drone_a.assigned_order_id, "swap_assignments", params)
+        if isinstance(order_a, RoutedAction):
+            return order_a
+        order_b = self._get_open_order(state, drone_b.assigned_order_id, "swap_assignments", params)
+        if isinstance(order_b, RoutedAction):
+            return order_b
+        if order_a.package_weight > drone_b.payload_capacity or order_b.package_weight > drone_a.payload_capacity:
+            return RoutedAction.invalid("swap_assignments", params, "payload_incompatible", "The swapped assignments exceed at least one drone payload capacity.")
+        if order_a.order_id in state.delivery_attempt_required or order_b.order_id in state.delivery_attempt_required:
+            return RoutedAction.invalid("swap_assignments", params, "attempt_pending", "Assignments with pending explicit delivery attempts cannot be swapped.")
+
+        return self._valid(ActionType.SWAP_ASSIGNMENTS, {"drone_a": drone_a.drone_id, "drone_b": drone_b.drone_id})
 
     def _validate_attempt_delivery(self, state, params: dict[str, Any]) -> RoutedAction:
         drone = self._get_drone(state, params["drone_id"])
