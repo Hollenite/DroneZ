@@ -28,6 +28,14 @@ class DroneState(BaseModel):
     eta: int | None = Field(default=None, ge=0)
     health_risk: RiskLevel = RiskLevel.LOW
     communication_strength: str = "strong"
+    maintenance_health: str = "good"
+    reserved_station_id: str | None = None
+    delivered_order_count: int = Field(default=0, ge=0)
+    failed_order_count: int = Field(default=0, ge=0)
+    total_flight_ticks: int = Field(default=0, ge=0)
+    home_zone: str = "hub"
+    target_zone: str | None = None
+    flight_path: list[str] = Field(default_factory=list)
 
 
 class OrderState(BaseModel):
@@ -39,6 +47,10 @@ class OrderState(BaseModel):
     retry_count: int = Field(default=0, ge=0)
     late_penalty: str = "medium"
     assigned_drone_id: str | None = None
+    zone_id: str
+    status: str = "queued"
+    package_weight: int = Field(default=1, ge=1)
+    fallback_options: list[str] = Field(default_factory=lambda: ["locker", "retry", "human_escalation"])
 
 
 class SectorState(BaseModel):
