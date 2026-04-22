@@ -37,6 +37,7 @@ class DroneZEnvironment:
             "reward_breakdown": serialize_breakdown(self.cumulative_breakdown),
             "cumulative_reward": serialize_breakdown(self.cumulative_breakdown),
             "invalid_action": False,
+            "triggered_scripted_events": [],
             "recent_events": list(self.state.recent_events),
         }
         self.last_info = info
@@ -65,6 +66,7 @@ class DroneZEnvironment:
                 "reward_breakdown": serialize_breakdown(breakdown),
                 "cumulative_reward": serialize_breakdown(self.cumulative_breakdown),
                 "done_reason": done_reason,
+                "triggered_scripted_events": [],
                 "recent_events": list(self.state.recent_events),
             }
             self.last_info = info
@@ -85,6 +87,7 @@ class DroneZEnvironment:
             "resolved_order_ids": result.info.get("resolved_order_ids", []),
             "reward_inputs": result.info.get("reward_inputs", {}),
             "recovery_actions": result.info.get("recovery_actions", {}),
+            "triggered_scripted_events": result.info.get("triggered_scripted_events", []),
             "recent_events": list(self.state.recent_events),
         }
         self.last_info = info

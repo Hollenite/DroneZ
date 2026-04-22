@@ -19,11 +19,12 @@ _ACTION_PARAMETERS: dict[ActionType, tuple[str, ...]] = {
     ActionType.HOLD_FLEET: ("zone_id",),
     ActionType.RESUME_OPERATIONS: ("zone_id",),
 }
-_SUPPORTED_ACTIONS = {
+SUPPORTED_ACTIONS = (
     ActionType.ASSIGN_DELIVERY,
     ActionType.RETURN_TO_CHARGE,
     ActionType.PRIORITIZE_ORDER,
-}
+)
+_SUPPORTED_ACTIONS = set(SUPPORTED_ACTIONS)
 _AVAILABLE_ASSIGNMENT_STATUSES = {DroneStatus.IDLE, DroneStatus.HOLDING}
 _AVAILABLE_CHARGE_STATUSES = {DroneStatus.IDLE, DroneStatus.HOLDING, DroneStatus.ASSIGNED}
 

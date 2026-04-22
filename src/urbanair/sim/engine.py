@@ -23,6 +23,7 @@ from ..utils.seeding import SeedBundle, create_seed_bundle, derive_seed
 from .city import build_city
 from .delivery_logic import resolve_delivery_attempts
 from .disruptions import evolve_disruptions
+from .scripted_events import apply_scripted_events
 from .fleet import advance_fleet_tick, apply_relay_effect, assign_order, build_fleet, send_to_charge
 from .hidden_dynamics import HiddenState, build_hidden_state, update_hidden_state
 from .orders import build_orders, tick_order_deadlines, update_customer_availability
@@ -79,6 +80,7 @@ class SimulatorState:
     next_order_index: int = 1
     cumulative_reward: RewardBreakdown = field(default_factory=RewardBreakdown)
     reward_inputs: dict[str, float] = field(default_factory=dict)
+    triggered_scripted_events: list[str] = field(default_factory=list)
 
 
 class SimulatorEngine:
@@ -188,6 +190,14 @@ class SimulatorEngine:
         reward_inputs["deadline_misses"] += float(len(deadline_events))
 
         # 8. Trigger or evolve disruptions
+        scripted_events, scripted_next_order_index, triggered_scripted_events = apply_scripted_events(
+            state.task_config.scripted_events,
+            state.tick,
+            state.sectors,
+            state.policy_notices,
+            state.orders,
+            state.next_order_index,
+        )
         disruption_events, next_order_index = evolve_disruptions(
             state.task_config,
             state.tick,
@@ -196,11 +206,14 @@ class SimulatorEngine:
             state.policy_notices,
             state.emergency_events,
             state.orders,
-            state.next_order_index,
+            scripted_next_order_index,
             state.hidden_state.sector_weather_bias if state.hidden_state else {},
             create_seed_bundle(derive_seed(state.seed_bundle.seed, 60 + state.tick)).rng,
+            triggered_scripted_events,
         )
         state.next_order_index = next_order_index
+        state.triggered_scripted_events = triggered_scripted_events
+        events.extend(scripted_events)
         events.extend(disruption_events)
 
         # 9. Update hidden dynamics
@@ -228,6 +241,7 @@ class SimulatorEngine:
                 "resolved_order_ids": sorted(state.resolved_order_ids),
                 "reward_inputs": reward_inputs,
                 "recovery_actions": recovery_actions,
+                "triggered_scripted_events": list(state.triggered_scripted_events),
             },
             reward_breakdown=breakdown,
         )

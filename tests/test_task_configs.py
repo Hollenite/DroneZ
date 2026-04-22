@@ -21,6 +21,7 @@ def test_task_configs_load_into_models() -> None:
         assert config.task_id == path.stem
         assert config.horizon > 0
         assert config.initial_orders >= config.urgent_orders
+        assert all(isinstance(event.params, dict) for event in config.scripted_events)
 
 
 def test_reward_and_fleet_configs_load() -> None:

@@ -133,11 +133,18 @@ class StepResult(BaseModel):
 
 class EpisodeSummary(BaseModel):
     task_id: str
+    policy_id: str | None = None
+    seed: int | None = None
     total_reward: float
     steps_completed: int = Field(ge=0)
     completed_deliveries: int = Field(default=0, ge=0)
     failed_deliveries: int = Field(default=0, ge=0)
     urgent_successes: int = Field(default=0, ge=0)
+    invalid_action_count: int = Field(default=0, ge=0)
+    deadline_miss_count: int = Field(default=0, ge=0)
+    critical_battery_events: int = Field(default=0, ge=0)
+    action_counts: dict[str, int] = Field(default_factory=dict)
+    triggered_scripted_events: list[str] = Field(default_factory=list)
     reward_breakdown: RewardBreakdown = Field(default_factory=RewardBreakdown)
 
 
@@ -151,6 +158,7 @@ class DynamicEventsConfig(BaseModel):
 class ScriptedEvent(BaseModel):
     tick: int = Field(ge=0)
     type: str
+    params: dict[str, Any] = Field(default_factory=dict)
 
 
 class TaskConfig(BaseModel):

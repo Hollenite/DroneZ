@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from ..enums import ActionType, OrderPriority
+from ..enums import OrderPriority
+from .action_router import SUPPORTED_ACTIONS
 from ..models import RewardBreakdown
 from .reward_engine import serialize_breakdown
 
@@ -14,7 +15,7 @@ def build_observation(state, reward_breakdown: RewardBreakdown | None = None, la
     charging = [_serialize_station(station) for station in sorted(state.charging_stations, key=lambda item: item.station_id)]
     notices = [_serialize_notice(notice) for notice in sorted(state.policy_notices, key=lambda item: item.notice_id)]
     emergencies = [_serialize_event(event) for event in sorted(state.emergency_events, key=lambda item: item.event_id)]
-    action_reminder = [action.value for action in ActionType]
+    action_reminder = [action.value for action in SUPPORTED_ACTIONS]
     observation = {
         "task_id": state.task_config.task_id,
         "step": state.tick,

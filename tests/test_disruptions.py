@@ -21,6 +21,7 @@ def test_disruptions_are_reproducible_for_same_seed() -> None:
         first.next_order_index,
         first.hidden_state.sector_weather_bias,
         create_seed_bundle(derive_seed(first.seed_bundle.seed, 64)).rng,
+        [],
     )
     second_events, second_next = evolve_disruptions(
         second.task_config,
@@ -33,6 +34,7 @@ def test_disruptions_are_reproducible_for_same_seed() -> None:
         second.next_order_index,
         second.hidden_state.sector_weather_bias,
         create_seed_bundle(derive_seed(second.seed_bundle.seed, 64)).rng,
+        [],
     )
 
     assert first_events == second_events
