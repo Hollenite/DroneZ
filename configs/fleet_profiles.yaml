@@ -1,0 +1,33 @@
+profiles:
+  fast_light:
+    drone_type: fast_light
+    payload_capacity: 2
+    battery_capacity: 100
+    cruise_speed: 3
+    weather_tolerance: low
+    can_deliver: true
+    communication_role: delivery
+  heavy_carrier:
+    drone_type: heavy_carrier
+    payload_capacity: 6
+    battery_capacity: 140
+    cruise_speed: 1
+    weather_tolerance: medium
+    can_deliver: true
+    communication_role: delivery
+  long_range_sensitive:
+    drone_type: long_range_sensitive
+    payload_capacity: 3
+    battery_capacity: 125
+    cruise_speed: 2
+    weather_tolerance: low
+    can_deliver: true
+    communication_role: delivery
+  relay:
+    drone_type: relay
+    payload_capacity: 0
+    battery_capacity: 110
+    cruise_speed: 2
+    weather_tolerance: medium
+    can_deliver: false
+    communication_role: relay

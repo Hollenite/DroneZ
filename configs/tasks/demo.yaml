@@ -1,0 +1,27 @@
+task_id: demo
+difficulty: demo
+description: Deterministic live-demo scenario designed to surface baseline failure and recovery opportunities.
+seed: 101
+horizon: 18
+fleet_counts:
+  fast_light: 1
+  heavy_carrier: 1
+  long_range_sensitive: 1
+  relay: 1
+initial_orders: 5
+urgent_orders: 2
+dynamic_events:
+  weather: true
+  no_fly: true
+  emergency: true
+  charging_congestion: true
+failed_drop_probability: 0.18
+hidden_factor_intensity: 0.5
+deterministic_demo: true
+scripted_events:
+  - tick: 4
+    type: urgent_insertion
+  - tick: 6
+    type: no_fly_shift
+  - tick: 8
+    type: failed_drop

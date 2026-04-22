@@ -1,0 +1,20 @@
+task_id: hard
+difficulty: hard
+description: High-pressure benchmark with urgent insertions, no-fly changes, and strong hidden-state pressure.
+seed: 33
+horizon: 40
+fleet_counts:
+  fast_light: 2
+  heavy_carrier: 2
+  long_range_sensitive: 2
+  relay: 1
+initial_orders: 11
+urgent_orders: 3
+dynamic_events:
+  weather: true
+  no_fly: true
+  emergency: true
+  charging_congestion: true
+failed_drop_probability: 0.28
+hidden_factor_intensity: 0.7
+deterministic_demo: false

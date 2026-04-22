@@ -1,0 +1,20 @@
+task_id: easy
+difficulty: easy
+description: Small debugging scenario with light disruption pressure and simple charging tradeoffs.
+seed: 11
+horizon: 20
+fleet_counts:
+  fast_light: 1
+  heavy_carrier: 1
+  long_range_sensitive: 1
+  relay: 0
+initial_orders: 4
+urgent_orders: 1
+dynamic_events:
+  weather: true
+  no_fly: false
+  emergency: false
+  charging_congestion: true
+failed_drop_probability: 0.1
+hidden_factor_intensity: 0.2
+deterministic_demo: false

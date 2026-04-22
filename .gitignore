@@ -1,4 +1,4 @@
-.openclaude/
+.openclaude/settings.local.json
 __pycache__/
 .venv/
 .pytest_cache/

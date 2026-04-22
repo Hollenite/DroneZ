@@ -1,0 +1,20 @@
+task_id: medium
+difficulty: medium
+description: Balanced scenario with customer windows, failed drops, and charging congestion.
+seed: 22
+horizon: 30
+fleet_counts:
+  fast_light: 2
+  heavy_carrier: 1
+  long_range_sensitive: 1
+  relay: 1
+initial_orders: 7
+urgent_orders: 2
+dynamic_events:
+  weather: true
+  no_fly: true
+  emergency: false
+  charging_congestion: true
+failed_drop_probability: 0.2
+hidden_factor_intensity: 0.45
+deterministic_demo: false
