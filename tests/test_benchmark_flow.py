@@ -36,3 +36,9 @@ def test_benchmark_runs_are_reproducible() -> None:
 
     assert first["ranking"] == second["ranking"]
     assert first["aggregate"] == second["aggregate"]
+
+
+def test_run_episode_trace_captures_new_action_types() -> None:
+    result = run_episode(HeuristicPolicy(), "demo", max_steps=10)
+
+    assert any(step["action"]["action"] in {"attempt_delivery", "reserve_charger", "fallback_to_locker", "hold_fleet", "resume_operations"} for step in result["trace"])

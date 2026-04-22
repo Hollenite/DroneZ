@@ -22,10 +22,16 @@ _ACTION_PARAMETERS: dict[ActionType, tuple[str, ...]] = {
 SUPPORTED_ACTIONS = (
     ActionType.ASSIGN_DELIVERY,
     ActionType.RETURN_TO_CHARGE,
+    ActionType.RESERVE_CHARGER,
+    ActionType.DELAY_ORDER,
     ActionType.PRIORITIZE_ORDER,
+    ActionType.ATTEMPT_DELIVERY,
+    ActionType.FALLBACK_TO_LOCKER,
+    ActionType.HOLD_FLEET,
+    ActionType.RESUME_OPERATIONS,
 )
 _SUPPORTED_ACTIONS = set(SUPPORTED_ACTIONS)
-_AVAILABLE_ASSIGNMENT_STATUSES = {DroneStatus.IDLE, DroneStatus.HOLDING}
+_AVAILABLE_ASSIGNMENT_HOLD_REASONS = {None, "delivery_failure", "order_delayed", "charger_reserved"}
 _AVAILABLE_CHARGE_STATUSES = {DroneStatus.IDLE, DroneStatus.HOLDING, DroneStatus.ASSIGNED}
 
 
@@ -86,83 +92,132 @@ class ActionRouter:
         return validator(state, params)
 
     def _validate_assign_delivery(self, state, params: dict[str, Any]) -> RoutedAction:
-        drone = next((item for item in state.fleet if item.drone_id == params["drone_id"]), None)
+        drone = self._get_drone(state, params["drone_id"])
         if drone is None:
             return RoutedAction.invalid("assign_delivery", params, "unknown_drone", f"Drone '{params['drone_id']}' does not exist.")
         if drone.drone_type == DroneType.RELAY:
             return RoutedAction.invalid("assign_delivery", params, "invalid_drone_type", "Relay drones cannot take delivery assignments.")
-        if drone.status not in _AVAILABLE_ASSIGNMENT_STATUSES:
-            return RoutedAction.invalid(
-                "assign_delivery",
-                params,
-                "drone_unavailable",
-                f"Drone '{drone.drone_id}' is not available for assignment.",
-            )
+        if not self._drone_available_for_assignment(drone):
+            return RoutedAction.invalid("assign_delivery", params, "drone_unavailable", f"Drone '{drone.drone_id}' is not available for assignment.")
 
-        order = next((item for item in state.orders if item.order_id == params["order_id"]), None)
-        if order is None:
-            return RoutedAction.invalid("assign_delivery", params, "unknown_order", f"Order '{params['order_id']}' does not exist.")
-        if order.order_id in state.resolved_order_ids:
-            return RoutedAction.invalid("assign_delivery", params, "order_resolved", f"Order '{order.order_id}' is already resolved.")
+        order = self._get_open_order(state, params["order_id"], "assign_delivery", params)
+        if isinstance(order, RoutedAction):
+            return order
         if order.assigned_drone_id is not None:
             return RoutedAction.invalid("assign_delivery", params, "order_assigned", f"Order '{order.order_id}' is already assigned.")
 
-        return RoutedAction(
-            simulator_action={
-                "action_type": ActionType.ASSIGN_DELIVERY.value,
-                "drone_id": drone.drone_id,
-                "order_id": order.order_id,
-            },
-            action_type=ActionType.ASSIGN_DELIVERY.value,
-            normalized_params={"drone_id": drone.drone_id, "order_id": order.order_id},
-            is_valid=True,
-        )
+        return self._valid(ActionType.ASSIGN_DELIVERY, {"drone_id": drone.drone_id, "order_id": order.order_id})
 
     def _validate_return_to_charge(self, state, params: dict[str, Any]) -> RoutedAction:
-        drone = next((item for item in state.fleet if item.drone_id == params["drone_id"]), None)
+        drone = self._get_drone(state, params["drone_id"])
         if drone is None:
             return RoutedAction.invalid("return_to_charge", params, "unknown_drone", f"Drone '{params['drone_id']}' does not exist.")
+        if drone.drone_type == DroneType.RELAY:
+            return RoutedAction.invalid("return_to_charge", params, "invalid_drone_type", "Relay drones do not use charging stations.")
         if drone.status not in _AVAILABLE_CHARGE_STATUSES:
-            return RoutedAction.invalid(
-                "return_to_charge",
-                params,
-                "drone_unavailable",
-                f"Drone '{drone.drone_id}' cannot be sent to charge right now.",
-            )
+            return RoutedAction.invalid("return_to_charge", params, "drone_unavailable", f"Drone '{drone.drone_id}' cannot be sent to charge right now.")
 
-        station = next((item for item in state.charging_stations if item.station_id == params["station_id"]), None)
+        station = self._get_station(state, params["station_id"])
         if station is None:
-            return RoutedAction.invalid(
-                "return_to_charge",
-                params,
-                "unknown_station",
-                f"Charging station '{params['station_id']}' does not exist.",
-            )
+            return RoutedAction.invalid("return_to_charge", params, "unknown_station", f"Charging station '{params['station_id']}' does not exist.")
 
-        return RoutedAction(
-            simulator_action={
-                "action_type": ActionType.RETURN_TO_CHARGE.value,
-                "drone_id": drone.drone_id,
-                "station_id": station.station_id,
-            },
-            action_type=ActionType.RETURN_TO_CHARGE.value,
-            normalized_params={"drone_id": drone.drone_id, "station_id": station.station_id},
-            is_valid=True,
-        )
+        return self._valid(ActionType.RETURN_TO_CHARGE, {"drone_id": drone.drone_id, "station_id": station.station_id})
+
+    def _validate_reserve_charger(self, state, params: dict[str, Any]) -> RoutedAction:
+        drone = self._get_drone(state, params["drone_id"])
+        if drone is None:
+            return RoutedAction.invalid("reserve_charger", params, "unknown_drone", f"Drone '{params['drone_id']}' does not exist.")
+        if drone.drone_type == DroneType.RELAY:
+            return RoutedAction.invalid("reserve_charger", params, "invalid_drone_type", "Relay drones do not use charging stations.")
+        if drone.status not in {DroneStatus.IDLE, DroneStatus.HOLDING, DroneStatus.ASSIGNED}:
+            return RoutedAction.invalid("reserve_charger", params, "drone_unavailable", f"Drone '{drone.drone_id}' cannot reserve charging right now.")
+
+        station = self._get_station(state, params["station_id"])
+        if station is None:
+            return RoutedAction.invalid("reserve_charger", params, "unknown_station", f"Charging station '{params['station_id']}' does not exist.")
+
+        return self._valid(ActionType.RESERVE_CHARGER, {"drone_id": drone.drone_id, "station_id": station.station_id})
+
+    def _validate_delay_order(self, state, params: dict[str, Any]) -> RoutedAction:
+        order = self._get_open_order(state, params["order_id"], "delay_order", params)
+        if isinstance(order, RoutedAction):
+            return order
+        return self._valid(ActionType.DELAY_ORDER, {"order_id": order.order_id})
 
     def _validate_prioritize_order(self, state, params: dict[str, Any]) -> RoutedAction:
-        order = next((item for item in state.orders if item.order_id == params["order_id"]), None)
-        if order is None:
-            return RoutedAction.invalid("prioritize_order", params, "unknown_order", f"Order '{params['order_id']}' does not exist.")
-        if order.order_id in state.resolved_order_ids:
-            return RoutedAction.invalid("prioritize_order", params, "order_resolved", f"Order '{order.order_id}' is already resolved.")
+        order = self._get_open_order(state, params["order_id"], "prioritize_order", params)
+        if isinstance(order, RoutedAction):
+            return order
+        return self._valid(ActionType.PRIORITIZE_ORDER, {"order_id": order.order_id})
 
+    def _validate_attempt_delivery(self, state, params: dict[str, Any]) -> RoutedAction:
+        drone = self._get_drone(state, params["drone_id"])
+        if drone is None:
+            return RoutedAction.invalid("attempt_delivery", params, "unknown_drone", f"Drone '{params['drone_id']}' does not exist.")
+        if drone.assigned_order_id is None:
+            return RoutedAction.invalid("attempt_delivery", params, "no_assigned_order", f"Drone '{drone.drone_id}' has no assigned order.")
+        if drone.status not in {DroneStatus.ASSIGNED, DroneStatus.IN_FLIGHT}:
+            return RoutedAction.invalid("attempt_delivery", params, "drone_unavailable", f"Drone '{drone.drone_id}' cannot attempt delivery right now.")
+        if params["mode"] not in {"doorstep", "locker", "handoff"}:
+            return RoutedAction.invalid("attempt_delivery", params, "invalid_mode", f"Unsupported delivery mode '{params['mode']}'.")
+
+        return self._valid(ActionType.ATTEMPT_DELIVERY, {"drone_id": drone.drone_id, "mode": params["mode"]})
+
+    def _validate_fallback_to_locker(self, state, params: dict[str, Any]) -> RoutedAction:
+        order = self._get_open_order(state, params["order_id"], "fallback_to_locker", params)
+        if isinstance(order, RoutedAction):
+            return order
+        if "locker" not in order.fallback_options:
+            return RoutedAction.invalid("fallback_to_locker", params, "locker_unavailable", f"Order '{order.order_id}' does not support locker fallback.")
+        if str(order.drop_mode.value if hasattr(order.drop_mode, 'value') else order.drop_mode) == "locker" and order.status == "locker_fallback":
+            return RoutedAction.invalid("fallback_to_locker", params, "locker_already_selected", f"Order '{order.order_id}' is already using locker fallback.")
+
+        return self._valid(ActionType.FALLBACK_TO_LOCKER, {"order_id": order.order_id, "locker_id": str(params["locker_id"])})
+
+    def _validate_hold_fleet(self, state, params: dict[str, Any]) -> RoutedAction:
+        sector = self._get_sector(state, params["zone_id"])
+        if sector is None:
+            return RoutedAction.invalid("hold_fleet", params, "unknown_zone", f"Zone '{params['zone_id']}' does not exist.")
+        if sector.operations_paused:
+            return RoutedAction.invalid("hold_fleet", params, "already_held", f"Zone '{sector.zone_id}' is already on hold.")
+
+        return self._valid(ActionType.HOLD_FLEET, {"zone_id": sector.zone_id})
+
+    def _validate_resume_operations(self, state, params: dict[str, Any]) -> RoutedAction:
+        sector = self._get_sector(state, params["zone_id"])
+        if sector is None:
+            return RoutedAction.invalid("resume_operations", params, "unknown_zone", f"Zone '{params['zone_id']}' does not exist.")
+        if not sector.operations_paused:
+            return RoutedAction.invalid("resume_operations", params, "zone_not_held", f"Zone '{sector.zone_id}' is not currently on hold.")
+
+        return self._valid(ActionType.RESUME_OPERATIONS, {"zone_id": sector.zone_id})
+
+    def _valid(self, action_type: ActionType, normalized_params: dict[str, Any]) -> RoutedAction:
         return RoutedAction(
-            simulator_action={
-                "action_type": ActionType.PRIORITIZE_ORDER.value,
-                "order_id": order.order_id,
-            },
-            action_type=ActionType.PRIORITIZE_ORDER.value,
-            normalized_params={"order_id": order.order_id},
+            simulator_action={"action_type": action_type.value, **normalized_params},
+            action_type=action_type.value,
+            normalized_params=normalized_params,
             is_valid=True,
         )
+
+    def _get_drone(self, state, drone_id: str):
+        return next((item for item in state.fleet if item.drone_id == drone_id), None)
+
+    def _get_station(self, state, station_id: str):
+        return next((item for item in state.charging_stations if item.station_id == station_id), None)
+
+    def _get_sector(self, state, zone_id: str):
+        return next((item for item in state.sectors if item.zone_id == zone_id), None)
+
+    def _get_open_order(self, state, order_id: str, action_name: str, params: dict[str, Any]):
+        order = next((item for item in state.orders if item.order_id == order_id), None)
+        if order is None:
+            return RoutedAction.invalid(action_name, params, "unknown_order", f"Order '{order_id}' does not exist.")
+        if order.order_id in state.resolved_order_ids or order.status in {"delivered", "canceled"}:
+            return RoutedAction.invalid(action_name, params, "order_resolved", f"Order '{order.order_id}' is already resolved.")
+        return order
+
+    def _drone_available_for_assignment(self, drone) -> bool:
+        if drone.status == DroneStatus.IDLE:
+            return True
+        return drone.status == DroneStatus.HOLDING and drone.hold_reason in _AVAILABLE_ASSIGNMENT_HOLD_REASONS

@@ -27,11 +27,15 @@ def build_observation(state, reward_breakdown: RewardBreakdown | None = None, la
             "policy_notices": notices,
             "emergency_events": emergencies,
             "active_no_fly_zones": [sector["zone_id"] for sector in sectors if sector["is_no_fly"]],
+            "held_zones": [sector["zone_id"] for sector in sectors if sector.get("operations_paused")],
         },
         "charging": charging,
         "recent_events": list(state.recent_events),
         "warnings": warnings,
         "action_reminder": action_reminder,
+        "pending_recovery_orders": sorted(state.pending_recovery_orders),
+        "delivery_attempt_required": sorted(state.delivery_attempt_required),
+        "zone_holds": dict(state.zone_hold_reasons),
         "reward": serialize_breakdown(breakdown),
         "summary": build_summary(state, fleet, orders, charging, warnings, breakdown, last_action),
     }
@@ -62,7 +66,7 @@ def build_summary(state, fleet: list[dict[str, object]], orders: list[dict[str, 
     lines.append("FLEET:")
     for drone in fleet:
         lines.append(
-            f"- {drone['drone_id']} | type={drone['drone_type']} | battery={drone['battery']} | zone={drone['current_zone']} | assigned={drone['assigned_order_id']} | eta={drone['eta']} | risk={drone['health_risk']}"
+            f"- {drone['drone_id']} | type={drone['drone_type']} | battery={drone['battery']} | zone={drone['current_zone']} | assigned={drone['assigned_order_id']} | eta={drone['eta']} | risk={drone['health_risk']} | hold_reason={drone['hold_reason']}"
         )
 
     lines.append("ORDERS:")
@@ -74,7 +78,7 @@ def build_summary(state, fleet: list[dict[str, object]], orders: list[dict[str, 
     lines.append("CHARGING:")
     for station in charging:
         lines.append(
-            f"- {station['station_id']} | occupancy={station['occupied_slots']}/{station['capacity']} | queue={station['queue_size']}"
+            f"- {station['station_id']} | occupancy={station['occupied_slots']}/{station['capacity']} | queue={station['queue_size']} | reserved={station['reserved_drone_ids']}"
         )
 
     if state.recent_events:
@@ -104,6 +108,7 @@ def _serialize_drone(drone) -> dict[str, object]:
         "health_risk": drone.health_risk.value,
         "communication_strength": drone.communication_strength,
         "reserved_station_id": drone.reserved_station_id,
+        "hold_reason": drone.hold_reason,
     }
 
 
@@ -130,6 +135,7 @@ def _serialize_sector(sector) -> dict[str, object]:
         "congestion_score": sector.congestion_score,
         "is_no_fly": sector.is_no_fly,
         "likely_failure": sector.likely_failure,
+        "operations_paused": sector.operations_paused,
     }
 
 
@@ -140,6 +146,7 @@ def _serialize_station(station) -> dict[str, object]:
         "capacity": station.capacity,
         "occupied_slots": station.occupied_slots,
         "queue_size": station.queue_size,
+        "reserved_drone_ids": list(station.reserved_drone_ids),
     }
 
 

@@ -37,3 +37,17 @@ Minimal HTTP endpoints:
 - `POST /sessions/{session_id}/step`
 
 The server keeps per-session environment state in memory and supports the standard tasks, including `demo`, as a regular task.
+
+## Environment action surface
+Current first-pass supported actions:
+- `assign_delivery`
+- `return_to_charge`
+- `reserve_charger`
+- `delay_order`
+- `prioritize_order`
+- `attempt_delivery`
+- `fallback_to_locker`
+- `hold_fleet`
+- `resume_operations`
+
+This pass also adds richer observation fields for held zones, pending recovery orders, explicit delivery-attempt requirements, charger reservations, and hold reasons, plus broader reward breakdown components tied to charging discipline, recovery, utilization, and backlog pressure.

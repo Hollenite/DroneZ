@@ -34,8 +34,20 @@ def test_heuristic_prefers_charging_for_low_battery_drone() -> None:
 
     action = HeuristicPolicy().choose_action(observation, info)
 
-    assert action["action"] == "return_to_charge"
+    assert action["action"] in {"reserve_charger", "return_to_charge"}
     assert action["params"]["drone_id"] == low_battery_drone["drone_id"]
+
+
+def test_policies_choose_explicit_delivery_attempt_when_ready() -> None:
+    env = DroneZEnvironment()
+    observation, info = env.reset("easy")
+    drone = next(drone for drone in observation["fleet"] if drone["drone_type"] != "relay")
+    drone["assigned_order_id"] = "O1"
+    drone["eta"] = 0
+    action = HeuristicPolicy().choose_action(observation, info)
+
+    assert action["action"] == "attempt_delivery"
+    assert action["params"]["drone_id"] == drone["drone_id"]
 
 
 def test_policies_are_deterministic_for_same_observation() -> None:

@@ -30,6 +30,7 @@ class DroneState(BaseModel):
     communication_strength: str = "strong"
     maintenance_health: str = "good"
     reserved_station_id: str | None = None
+    hold_reason: str | None = None
     delivered_order_count: int = Field(default=0, ge=0)
     failed_order_count: int = Field(default=0, ge=0)
     total_flight_ticks: int = Field(default=0, ge=0)
@@ -59,6 +60,7 @@ class SectorState(BaseModel):
     congestion_score: float = Field(default=0.0, ge=0.0, le=1.0)
     is_no_fly: bool = False
     likely_failure: bool = False
+    operations_paused: bool = False
 
 
 class ChargingStationState(BaseModel):
@@ -67,6 +69,7 @@ class ChargingStationState(BaseModel):
     capacity: int = Field(ge=1)
     occupied_slots: int = Field(default=0, ge=0)
     queue_size: int = Field(default=0, ge=0)
+    reserved_drone_ids: list[str] = Field(default_factory=list)
 
 
 class PolicyNotice(BaseModel):

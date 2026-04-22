@@ -60,18 +60,30 @@ def assign_order(drone: DroneState, order_id: str, destination_zone: str, sector
     return [f"{drone.drone_id} assigned to {order_id} with ETA {drone.eta}."]
 
 
-def send_to_charge(drone: DroneState, station: ChargingStationState) -> list[str]:
+def send_to_charge(drone: DroneState, station: ChargingStationState, reserve_only: bool = False) -> list[str]:
+    events: list[str] = []
+    if drone.reserved_station_id and drone.reserved_station_id != station.station_id:
+        events.append(f"{drone.drone_id} switched charging reservation to {station.station_id}.")
     drone.reserved_station_id = station.station_id
+    if drone.drone_id not in station.reserved_drone_ids:
+        station.reserved_drone_ids.append(drone.drone_id)
+
+    if reserve_only:
+        drone.hold_reason = "charger_reserved"
+        return events + [f"{drone.drone_id} reserved charging at {station.station_id}."]
+
     if station.occupied_slots < station.capacity:
         station.occupied_slots += 1
         drone.status = DroneStatus.CHARGING
+        drone.hold_reason = None
         drone.eta = None
-        return [f"{drone.drone_id} started charging at {station.station_id}."]
+        return events + [f"{drone.drone_id} started charging at {station.station_id}."]
 
     station.queue_size += 1
     drone.status = DroneStatus.HOLDING
+    drone.hold_reason = "charging_queue"
     drone.eta = None
-    return [f"{drone.drone_id} queued for charging at {station.station_id}."]
+    return events + [f"{drone.drone_id} queued for charging at {station.station_id}."]
 
 
 def advance_fleet_tick(fleet: list[DroneState], sectors: list[SectorState]) -> list[str]:
@@ -98,6 +110,7 @@ def advance_fleet_tick(fleet: list[DroneState], sectors: list[SectorState]) -> l
             drone.battery = min(100, drone.battery + 18)
             if drone.battery >= 92:
                 drone.status = DroneStatus.IDLE
+                drone.hold_reason = None
                 drone.reserved_station_id = None
                 events.append(f"{drone.drone_id} finished charging.")
 

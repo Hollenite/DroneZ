@@ -87,6 +87,9 @@ class DroneZEnvironment:
             "resolved_order_ids": result.info.get("resolved_order_ids", []),
             "reward_inputs": result.info.get("reward_inputs", {}),
             "recovery_actions": result.info.get("recovery_actions", {}),
+            "pending_recovery_orders": result.info.get("pending_recovery_orders", []),
+            "delivery_attempt_required": result.info.get("delivery_attempt_required", []),
+            "zone_holds": result.info.get("zone_holds", {}),
             "triggered_scripted_events": result.info.get("triggered_scripted_events", []),
             "recent_events": list(self.state.recent_events),
         }
