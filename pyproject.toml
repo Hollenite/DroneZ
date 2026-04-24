@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dronez"
+version = "0.1.0"
+description = "DroneZ OpenEnv environment for LLM fleet control of autonomous delivery drones."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "openenv-core[core]>=0.2.1",
+  "fastapi>=0.111.0,<1.0.0",
+  "uvicorn>=0.30.0,<1.0.0",
+  "pydantic>=2.10.0,<3.0.0",
+  "PyYAML>=6.0,<7.0",
+  "requests>=2.32.0,<3.0.0",
+  "numpy<2",
+  "matplotlib>=3.9.0,<4.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0.0,<9.0.0",
+]
+train = [
+  "accelerate>=0.33.0",
+  "datasets>=2.20.0",
+  "transformers>=4.51.0",
+  "trl>=0.16.0",
+]
+
+[project.scripts]
+server = "server.app:main"
+dronez-server = "urbanair.server.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

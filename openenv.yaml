@@ -1,20 +1,6 @@
-name: DroneZ
-summary: OpenEnv-compliant urban drone fleet operations environment
-entrypoints:
-  inference: inference.py
-tasks:
-  - easy
-  - medium
-  - hard
-  - demo
-action_contract:
-  type: compact_structured_actions
-observation_contract:
-  type: structured_fleet_operations_state
-evaluation:
-  focus:
-    - total_reward
-    - delivery_success_rate
-    - urgent_order_success_rate
-    - battery_safety_incidents
-    - restricted_zone_violations
+spec_version: 1
+name: dronez
+type: space
+runtime: fastapi
+app: server.app:app
+port: 7860

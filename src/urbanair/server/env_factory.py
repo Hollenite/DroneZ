@@ -27,6 +27,10 @@ class EnvironmentRegistry:
         environment = self.require(session_id)
         return environment.step(action)
 
+    def state_session(self, session_id: str) -> dict[str, object]:
+        environment = self.require(session_id)
+        return environment.state_snapshot()
+
     def require(self, session_id: str) -> DroneZEnvironment:
         environment = self.get(session_id)
         if environment is None:
