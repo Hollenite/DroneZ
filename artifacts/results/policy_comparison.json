@@ -1,0 +1,891 @@
+{
+  "tasks": [
+    "easy",
+    "medium",
+    "hard",
+    "demo"
+  ],
+  "ranking": [
+    "improved",
+    "heuristic",
+    "random",
+    "naive"
+  ],
+  "aggregate": {
+    "random": {
+      "mean_total_reward": -921.5,
+      "mean_normalized_score": 0.01,
+      "completed_deliveries": 9,
+      "failed_deliveries": 0,
+      "urgent_successes": 4,
+      "invalid_actions": 0,
+      "deadline_misses": 27,
+      "safety_violations": 396,
+      "actions_taken": 108
+    },
+    "naive": {
+      "mean_total_reward": -1038.0,
+      "mean_normalized_score": 0.01,
+      "completed_deliveries": 6,
+      "failed_deliveries": 0,
+      "urgent_successes": 3,
+      "invalid_actions": 0,
+      "deadline_misses": 27,
+      "safety_violations": 497,
+      "actions_taken": 108
+    },
+    "heuristic": {
+      "mean_total_reward": -281.5,
+      "mean_normalized_score": 0.07972222222222224,
+      "completed_deliveries": 10,
+      "failed_deliveries": 0,
+      "urgent_successes": 5,
+      "invalid_actions": 0,
+      "deadline_misses": 45,
+      "safety_violations": 182,
+      "actions_taken": 108
+    },
+    "improved": {
+      "mean_total_reward": -42.125,
+      "mean_normalized_score": 0.3050694444444444,
+      "completed_deliveries": 5,
+      "failed_deliveries": 0,
+      "urgent_successes": 3,
+      "invalid_actions": 0,
+      "deadline_misses": 24,
+      "safety_violations": 0,
+      "actions_taken": 108
+    }
+  },
+  "policy_results": {
+    "random": {
+      "easy": {
+        "task_id": "easy",
+        "policy_id": "random",
+        "seed": 11,
+        "total_reward": -278.0,
+        "normalized_score": 0.01,
+        "steps_completed": 20,
+        "actions_taken": 20,
+        "average_step_reward": -13.9,
+        "total_orders": 4,
+        "total_urgent_orders": 1,
+        "completed_deliveries": 2,
+        "failed_deliveries": 0,
+        "urgent_successes": 1,
+        "invalid_action_count": 0,
+        "deadline_miss_count": 3,
+        "critical_battery_events": 6,
+        "safety_violations": 47,
+        "done_reason": "horizon_reached",
+        "terminated_by": "environment",
+        "action_counts": {
+          "prioritize_order": 3,
+          "fallback_to_locker": 3,
+          "assign_delivery": 7,
+          "attempt_delivery": 5,
+          "reserve_charger": 1,
+          "return_to_charge": 1
+        },
+        "triggered_scripted_events": [],
+        "reward_breakdown": {
+          "positive": {
+            "battery_safe_operation": 90.0,
+            "delivery_success": 22.0,
+            "disruption_recovery": 30.0,
+            "efficient_assignment": 5.0,
+            "fleet_utilization": 58.0,
+            "regulatory_compliance": 60.0,
+            "successful_locker_fallback": 12.0,
+            "urgent_delivery_success": 14.0
+          },
+          "negative": {
+            "battery_critical": -60.0,
+            "failed_delivery_attempt": -15.0,
+            "idle_with_pending_orders": -66.0,
+            "missed_deadline": -24.0,
+            "overloaded_assignment": -28.0,
+            "unsafe_zone_entry": -376.0
+          },
+          "total": -278.0
+        }
+      },
+      "medium": {
+        "task_id": "medium",
+        "policy_id": "random",
+        "seed": 22,
+        "total_reward": -1231.5,
+        "normalized_score": 0.01,
+        "steps_completed": 30,
+        "actions_taken": 30,
+        "average_step_reward": -41.05,
+        "total_orders": 7,
+        "total_urgent_orders": 2,
+        "completed_deliveries": 2,
+        "failed_deliveries": 0,
+        "urgent_successes": 1,
+        "invalid_action_count": 0,
+        "deadline_miss_count": 6,
+        "critical_battery_events": 38,
+        "safety_violations": 138,
+        "done_reason": "horizon_reached",
+        "terminated_by": "environment",
+        "action_counts": {
+          "prioritize_order": 2,
+          "assign_delivery": 10,
+          "fallback_to_locker": 4,
+          "reroute": 4,
+          "attempt_delivery": 7,
+          "reserve_charger": 2,
+          "return_to_charge": 1
+        },
+        "triggered_scripted_events": [],
+        "reward_breakdown": {
+          "positive": {
+            "battery_safe_operation": 135.0,
+            "deadline_met": 4.0,
+            "delivery_success": 22.0,
+            "disruption_recovery": 40.0,
+            "efficient_assignment": 2.5,
+            "fleet_utilization": 120.0,
+            "regulatory_compliance": 72.0,
+            "safe_reroute": 18.0,
+            "successful_locker_fallback": 16.0,
+            "urgent_delivery_success": 14.0
+          },
+          "negative": {
+            "battery_critical": -380.0,
+            "failed_delivery_attempt": -25.0,
+            "idle_with_pending_orders": -78.0,
+            "missed_deadline": -48.0,
+            "overloaded_assignment": -40.0,
+            "unsafe_zone_entry": -1104.0
+          },
+          "total": -1231.5
+        }
+      },
+      "hard": {
+        "task_id": "hard",
+        "policy_id": "random",
+        "seed": 33,
+        "total_reward": -2014.0,
+        "normalized_score": 0.01,
+        "steps_completed": 40,
+        "actions_taken": 40,
+        "average_step_reward": -50.35,
+        "total_orders": 13,
+        "total_urgent_orders": 5,
+        "completed_deliveries": 3,
+        "failed_deliveries": 0,
+        "urgent_successes": 1,
+        "invalid_action_count": 0,
+        "deadline_miss_count": 13,
+        "critical_battery_events": 69,
+        "safety_violations": 178,
+        "done_reason": "horizon_reached",
+        "terminated_by": "environment",
+        "action_counts": {
+          "assign_delivery": 11,
+          "prioritize_order": 8,
+          "attempt_delivery": 10,
+          "fallback_to_locker": 4,
+          "reserve_charger": 3,
+          "reroute": 2,
+          "return_to_charge": 2
+        },
+        "triggered_scripted_events": [],
+        "reward_breakdown": {
+          "positive": {
+            "battery_safe_operation": 178.5,
+            "delivery_success": 33.0,
+            "disruption_recovery": 45.0,
+            "efficient_assignment": 7.5,
+            "fleet_utilization": 178.0,
+            "regulatory_compliance": 15.0,
+            "safe_reroute": 9.0,
+            "successful_locker_fallback": 16.0,
+            "urgent_delivery_success": 14.0
+          },
+          "negative": {
+            "battery_critical": -690.0,
+            "failed_delivery_attempt": -35.0,
+            "idle_with_pending_orders": -213.0,
+            "missed_deadline": -104.0,
+            "overloaded_assignment": -44.0,
+            "unsafe_zone_entry": -1424.0
+          },
+          "total": -2014.0
+        }
+      },
+      "demo": {
+        "task_id": "demo",
+        "policy_id": "random",
+        "seed": 101,
+        "total_reward": -162.5,
+        "normalized_score": 0.01,
+        "steps_completed": 18,
+        "actions_taken": 18,
+        "average_step_reward": -9.027777777777779,
+        "total_orders": 6,
+        "total_urgent_orders": 3,
+        "completed_deliveries": 2,
+        "failed_deliveries": 0,
+        "urgent_successes": 1,
+        "invalid_action_count": 0,
+        "deadline_miss_count": 5,
+        "critical_battery_events": 5,
+        "safety_violations": 33,
+        "done_reason": "horizon_reached",
+        "terminated_by": "environment",
+        "action_counts": {
+          "assign_delivery": 6,
+          "prioritize_order": 5,
+          "attempt_delivery": 5,
+          "fallback_to_locker": 1,
+          "reroute": 1
+        },
+        "triggered_scripted_events": [
+          "urgent_insertion",
+          "no_fly_shift",
+          "failed_drop"
+        ],
+        "reward_breakdown": {
+          "positive": {
+            "battery_safe_operation": 96.0,
+            "deadline_met": 4.0,
+            "delivery_success": 22.0,
+            "disruption_recovery": 15.0,
+            "efficient_assignment": 5.0,
+            "fleet_utilization": 66.0,
+            "regulatory_compliance": 42.0,
+            "safe_reroute": 4.5,
+            "successful_locker_fallback": 4.0,
+            "urgent_delivery_success": 14.0
+          },
+          "negative": {
+            "battery_critical": -50.0,
+            "failed_delivery_attempt": -15.0,
+            "idle_with_pending_orders": -42.0,
+            "missed_deadline": -40.0,
+            "overloaded_assignment": -24.0,
+            "unsafe_zone_entry": -264.0
+          },
+          "total": -162.5
+        }
+      }
+    },
+    "naive": {
+      "easy": {
+        "task_id": "easy",
+        "policy_id": "naive",
+        "seed": 11,
+        "total_reward": -315.5,
+        "normalized_score": 0.01,
+        "steps_completed": 20,
+        "actions_taken": 20,
+        "average_step_reward": -15.775,
+        "total_orders": 4,
+        "total_urgent_orders": 1,
+        "completed_deliveries": 2,
+        "failed_deliveries": 0,
+        "urgent_successes": 1,
+        "invalid_action_count": 0,
+        "deadline_miss_count": 3,
+        "critical_battery_events": 0,
+        "safety_violations": 53,
+        "done_reason": "horizon_reached",
+        "terminated_by": "environment",
+        "action_counts": {
+          "assign_delivery": 7,
+          "attempt_delivery": 6,
+          "fallback_to_locker": 3,
+          "reserve_charger": 2,
+          "return_to_charge": 2
+        },
+        "triggered_scripted_events": [],
+        "reward_breakdown": {
+          "positive": {
+            "battery_safe_operation": 82.5,
+            "deadline_met": 4.0,
+            "delivery_success": 22.0,
+            "disruption_recovery": 30.0,
+            "efficient_assignment": 5.0,
+            "fleet_utilization": 32.0,
+            "regulatory_compliance": 60.0,
+            "successful_locker_fallback": 12.0,
+            "urgent_delivery_success": 14.0
+          },
+          "negative": {
+            "failed_delivery_attempt": -20.0,
+            "idle_with_pending_orders": -81.0,
+            "missed_deadline": -24.0,
+            "overloaded_assignment": -28.0,
+            "unsafe_zone_entry": -424.0
+          },
+          "total": -315.5
+        }
+      },
+      "medium": {
+        "task_id": "medium",
+        "policy_id": "naive",
+        "seed": 22,
+        "total_reward": -1259.5,
+        "normalized_score": 0.01,
+        "steps_completed": 30,
+        "actions_taken": 30,
+        "average_step_reward": -41.983333333333334,
+        "total_orders": 7,
+        "total_urgent_orders": 2,
+        "completed_deliveries": 4,
+        "failed_deliveries": 0,
+        "urgent_successes": 2,
+        "invalid_action_count": 0,
+        "deadline_miss_count": 5,
+        "critical_battery_events": 7,
+        "safety_violations": 161,
+        "done_reason": "horizon_reached",
+        "terminated_by": "environment",
+        "action_counts": {
+          "assign_delivery": 12,
+          "attempt_delivery": 11,
+          "fallback_to_locker": 3,
+          "reserve_charger": 2,
+          "return_to_charge": 2
+        },
+        "triggered_scripted_events": [],
+        "reward_breakdown": {
+          "positive": {
+            "battery_safe_operation": 129.0,
+            "deadline_met": 8.0,
+            "delivery_success": 44.0,
+            "disruption_recovery": 45.0,
+            "efficient_assignment": 2.5,
+            "fleet_utilization": 58.0,
+            "regulatory_compliance": 87.0,
+            "successful_locker_fallback": 12.0,
+            "urgent_delivery_success": 28.0
+          },
+          "negative": {
+            "battery_critical": -70.0,
+            "failed_delivery_attempt": -35.0,
+            "idle_with_pending_orders": -192.0,
+            "missed_deadline": -40.0,
+            "overloaded_assignment": -48.0,
+            "unsafe_zone_entry": -1288.0
+          },
+          "total": -1259.5
+        }
+      },
+      "hard": {
+        "task_id": "hard",
+        "policy_id": "naive",
+        "seed": 33,
+        "total_reward": -1969.5,
+        "normalized_score": 0.01,
+        "steps_completed": 40,
+        "actions_taken": 40,
+        "average_step_reward": -49.2375,
+        "total_orders": 13,
+        "total_urgent_orders": 5,
+        "completed_deliveries": 0,
+        "failed_deliveries": 0,
+        "urgent_successes": 0,
+        "invalid_action_count": 0,
+        "deadline_miss_count": 13,
+        "critical_battery_events": 2,
+        "safety_violations": 211,
+        "done_reason": "horizon_reached",
+        "terminated_by": "environment",
+        "action_counts": {
+          "assign_delivery": 10,
+          "attempt_delivery": 10,
+          "fallback_to_locker": 15,
+          "reserve_charger": 3,
+          "return_to_charge": 2
+        },
+        "triggered_scripted_events": [],
+        "reward_breakdown": {
+          "positive": {
+            "battery_safe_operation": 148.5,
+            "disruption_recovery": 90.0,
+            "fleet_utilization": 42.0,
+            "regulatory_compliance": 72.0,
+            "successful_locker_fallback": 60.0
+          },
+          "negative": {
+            "battery_critical": -20.0,
+            "failed_delivery_attempt": -50.0,
+            "idle_with_pending_orders": -480.0,
+            "missed_deadline": -104.0,
+            "overloaded_assignment": -40.0,
+            "unsafe_zone_entry": -1688.0
+          },
+          "total": -1969.5
+        }
+      },
+      "demo": {
+        "task_id": "demo",
+        "policy_id": "naive",
+        "seed": 101,
+        "total_reward": -607.5,
+        "normalized_score": 0.01,
+        "steps_completed": 18,
+        "actions_taken": 18,
+        "average_step_reward": -33.75,
+        "total_orders": 6,
+        "total_urgent_orders": 3,
+        "completed_deliveries": 0,
+        "failed_deliveries": 0,
+        "urgent_successes": 0,
+        "invalid_action_count": 0,
+        "deadline_miss_count": 6,
+        "critical_battery_events": 3,
+        "safety_violations": 72,
+        "done_reason": "horizon_reached",
+        "terminated_by": "environment",
+        "action_counts": {
+          "assign_delivery": 7,
+          "attempt_delivery": 5,
+          "fallback_to_locker": 4,
+          "reserve_charger": 1,
+          "return_to_charge": 1
+        },
+        "triggered_scripted_events": [
+          "urgent_insertion",
+          "no_fly_shift",
+          "failed_drop"
+        ],
+        "reward_breakdown": {
+          "positive": {
+            "battery_safe_operation": 67.5,
+            "disruption_recovery": 45.0,
+            "fleet_utilization": 22.0,
+            "regulatory_compliance": 45.0,
+            "successful_locker_fallback": 16.0
+          },
+          "negative": {
+            "battery_critical": -30.0,
+            "failed_delivery_attempt": -25.0,
+            "idle_with_pending_orders": -96.0,
+            "missed_deadline": -48.0,
+            "overloaded_assignment": -28.0,
+            "unsafe_zone_entry": -576.0
+          },
+          "total": -607.5
+        }
+      }
+    },
+    "heuristic": {
+      "easy": {
+        "task_id": "easy",
+        "policy_id": "heuristic",
+        "seed": 11,
+        "total_reward": -154.0,
+        "normalized_score": 0.01,
+        "steps_completed": 20,
+        "actions_taken": 20,
+        "average_step_reward": -7.7,
+        "total_orders": 4,
+        "total_urgent_orders": 1,
+        "completed_deliveries": 3,
+        "failed_deliveries": 0,
+        "urgent_successes": 1,
+        "invalid_action_count": 0,
+        "deadline_miss_count": 9,
+        "critical_battery_events": 0,
+        "safety_violations": 27,
+        "done_reason": "horizon_reached",
+        "terminated_by": "environment",
+        "action_counts": {
+          "assign_delivery": 4,
+          "attempt_delivery": 4,
+          "fallback_to_locker": 2,
+          "reroute": 2,
+          "hold_fleet": 2,
+          "delay_order": 6
+        },
+        "triggered_scripted_events": [],
+        "reward_breakdown": {
+          "positive": {
+            "battery_safe_operation": 78.0,
+            "deadline_met": 4.0,
+            "delivery_success": 33.0,
+            "disruption_recovery": 10.0,
+            "efficient_assignment": 5.0,
+            "fleet_utilization": 24.0,
+            "regulatory_compliance": 60.0,
+            "safe_reroute": 9.0,
+            "successful_locker_fallback": 8.0,
+            "urgent_delivery_success": 14.0
+          },
+          "negative": {
+            "failed_delivery_attempt": -5.0,
+            "idle_with_pending_orders": -90.0,
+            "missed_deadline": -72.0,
+            "overloaded_assignment": -16.0,
+            "unsafe_zone_entry": -216.0
+          },
+          "total": -154.0
+        }
+      },
+      "medium": {
+        "task_id": "medium",
+        "policy_id": "heuristic",
+        "seed": 22,
+        "total_reward": -439.5,
+        "normalized_score": 0.01,
+        "steps_completed": 30,
+        "actions_taken": 30,
+        "average_step_reward": -14.65,
+        "total_orders": 7,
+        "total_urgent_orders": 2,
+        "completed_deliveries": 3,
+        "failed_deliveries": 0,
+        "urgent_successes": 2,
+        "invalid_action_count": 0,
+        "deadline_miss_count": 18,
+        "critical_battery_events": 0,
+        "safety_violations": 65,
+        "done_reason": "horizon_reached",
+        "terminated_by": "environment",
+        "action_counts": {
+          "assign_delivery": 4,
+          "fallback_to_locker": 3,
+          "attempt_delivery": 4,
+          "hold_fleet": 4,
+          "reroute": 2,
+          "delay_order": 13
+        },
+        "triggered_scripted_events": [],
+        "reward_breakdown": {
+          "positive": {
+            "battery_safe_operation": 108.0,
+            "deadline_met": 8.0,
+            "delivery_success": 33.0,
+            "disruption_recovery": 15.0,
+            "efficient_assignment": 2.5,
+            "fleet_utilization": 24.0,
+            "regulatory_compliance": 90.0,
+            "safe_reroute": 9.0,
+            "successful_locker_fallback": 12.0,
+            "urgent_delivery_success": 28.0
+          },
+          "negative": {
+            "failed_delivery_attempt": -5.0,
+            "idle_with_pending_orders": -84.0,
+            "missed_deadline": -144.0,
+            "overloaded_assignment": -16.0,
+            "unsafe_zone_entry": -520.0
+          },
+          "total": -439.5
+        }
+      },
+      "hard": {
+        "task_id": "hard",
+        "policy_id": "heuristic",
+        "seed": 33,
+        "total_reward": -564.5,
+        "normalized_score": 0.01,
+        "steps_completed": 40,
+        "actions_taken": 40,
+        "average_step_reward": -14.1125,
+        "total_orders": 13,
+        "total_urgent_orders": 5,
+        "completed_deliveries": 2,
+        "failed_deliveries": 0,
+        "urgent_successes": 1,
+        "invalid_action_count": 0,
+        "deadline_miss_count": 13,
+        "critical_battery_events": 0,
+        "safety_violations": 82,
+        "done_reason": "horizon_reached",
+        "terminated_by": "environment",
+        "action_counts": {
+          "assign_delivery": 6,
+          "fallback_to_locker": 3,
+          "attempt_delivery": 6,
+          "hold_fleet": 3,
+          "reroute": 3,
+          "prioritize_order": 19
+        },
+        "triggered_scripted_events": [],
+        "reward_breakdown": {
+          "positive": {
+            "battery_safe_operation": 148.5,
+            "delivery_success": 22.0,
+            "disruption_recovery": 20.0,
+            "efficient_assignment": 7.5,
+            "fleet_utilization": 38.0,
+            "regulatory_compliance": 114.0,
+            "safe_reroute": 13.5,
+            "successful_locker_fallback": 12.0,
+            "urgent_delivery_success": 14.0
+          },
+          "negative": {
+            "failed_delivery_attempt": -20.0,
+            "idle_with_pending_orders": -150.0,
+            "missed_deadline": -104.0,
+            "overloaded_assignment": -24.0,
+            "unsafe_zone_entry": -656.0
+          },
+          "total": -564.5
+        }
+      },
+      "demo": {
+        "task_id": "demo",
+        "policy_id": "heuristic",
+        "seed": 101,
+        "total_reward": 32.0,
+        "normalized_score": 0.2888888888888889,
+        "steps_completed": 18,
+        "actions_taken": 18,
+        "average_step_reward": 1.7777777777777777,
+        "total_orders": 6,
+        "total_urgent_orders": 3,
+        "completed_deliveries": 2,
+        "failed_deliveries": 0,
+        "urgent_successes": 1,
+        "invalid_action_count": 0,
+        "deadline_miss_count": 5,
+        "critical_battery_events": 0,
+        "safety_violations": 8,
+        "done_reason": "horizon_reached",
+        "terminated_by": "environment",
+        "action_counts": {
+          "assign_delivery": 4,
+          "attempt_delivery": 4,
+          "fallback_to_locker": 2,
+          "reroute": 2,
+          "hold_fleet": 3,
+          "prioritize_order": 3
+        },
+        "triggered_scripted_events": [
+          "urgent_insertion",
+          "no_fly_shift",
+          "failed_drop"
+        ],
+        "reward_breakdown": {
+          "positive": {
+            "battery_safe_operation": 73.5,
+            "deadline_met": 4.0,
+            "delivery_success": 22.0,
+            "disruption_recovery": 10.0,
+            "efficient_assignment": 7.5,
+            "fleet_utilization": 26.0,
+            "regulatory_compliance": 36.0,
+            "safe_reroute": 9.0,
+            "successful_locker_fallback": 8.0,
+            "urgent_delivery_success": 14.0
+          },
+          "negative": {
+            "failed_delivery_attempt": -10.0,
+            "idle_with_pending_orders": -48.0,
+            "missed_deadline": -40.0,
+            "overloaded_assignment": -16.0,
+            "unsafe_zone_entry": -64.0
+          },
+          "total": 32.0
+        }
+      }
+    },
+    "improved": {
+      "easy": {
+        "task_id": "easy",
+        "policy_id": "improved",
+        "seed": 11,
+        "total_reward": 35.0,
+        "normalized_score": 0.6141666666666666,
+        "steps_completed": 20,
+        "actions_taken": 20,
+        "average_step_reward": 1.75,
+        "total_orders": 4,
+        "total_urgent_orders": 1,
+        "completed_deliveries": 2,
+        "failed_deliveries": 0,
+        "urgent_successes": 1,
+        "invalid_action_count": 0,
+        "deadline_miss_count": 2,
+        "critical_battery_events": 0,
+        "safety_violations": 0,
+        "done_reason": "horizon_reached",
+        "terminated_by": "environment",
+        "action_counts": {
+          "assign_delivery": 2,
+          "attempt_delivery": 2,
+          "fallback_to_locker": 1,
+          "prioritize_order": 14,
+          "hold_fleet": 1
+        },
+        "triggered_scripted_events": [],
+        "reward_breakdown": {
+          "positive": {
+            "battery_safe_operation": 66.0,
+            "deadline_met": 4.0,
+            "delivery_success": 22.0,
+            "disruption_recovery": 5.0,
+            "efficient_assignment": 5.0,
+            "fleet_utilization": 8.0,
+            "regulatory_compliance": 60.0,
+            "successful_locker_fallback": 4.0,
+            "urgent_delivery_success": 14.0
+          },
+          "negative": {
+            "idle_with_pending_orders": -129.0,
+            "missed_deadline": -16.0,
+            "overloaded_assignment": -8.0
+          },
+          "total": 35.0
+        }
+      },
+      "medium": {
+        "task_id": "medium",
+        "policy_id": "improved",
+        "seed": 22,
+        "total_reward": -77.0,
+        "normalized_score": 0.01,
+        "steps_completed": 30,
+        "actions_taken": 30,
+        "average_step_reward": -2.566666666666667,
+        "total_orders": 7,
+        "total_urgent_orders": 2,
+        "completed_deliveries": 1,
+        "failed_deliveries": 0,
+        "urgent_successes": 1,
+        "invalid_action_count": 0,
+        "deadline_miss_count": 5,
+        "critical_battery_events": 0,
+        "safety_violations": 0,
+        "done_reason": "horizon_reached",
+        "terminated_by": "environment",
+        "action_counts": {
+          "assign_delivery": 1,
+          "fallback_to_locker": 2,
+          "attempt_delivery": 1,
+          "hold_fleet": 1,
+          "prioritize_order": 25
+        },
+        "triggered_scripted_events": [],
+        "reward_breakdown": {
+          "positive": {
+            "battery_safe_operation": 94.5,
+            "deadline_met": 4.0,
+            "delivery_success": 11.0,
+            "disruption_recovery": 10.0,
+            "efficient_assignment": 2.5,
+            "fleet_utilization": 6.0,
+            "regulatory_compliance": 90.0,
+            "successful_locker_fallback": 8.0,
+            "urgent_delivery_success": 14.0
+          },
+          "negative": {
+            "idle_with_pending_orders": -273.0,
+            "missed_deadline": -40.0,
+            "overloaded_assignment": -4.0
+          },
+          "total": -77.0
+        }
+      },
+      "hard": {
+        "task_id": "hard",
+        "policy_id": "improved",
+        "seed": 33,
+        "total_reward": -215.5,
+        "normalized_score": 0.01,
+        "steps_completed": 40,
+        "actions_taken": 40,
+        "average_step_reward": -5.3875,
+        "total_orders": 13,
+        "total_urgent_orders": 5,
+        "completed_deliveries": 0,
+        "failed_deliveries": 0,
+        "urgent_successes": 0,
+        "invalid_action_count": 0,
+        "deadline_miss_count": 12,
+        "critical_battery_events": 0,
+        "safety_violations": 0,
+        "done_reason": "horizon_reached",
+        "terminated_by": "environment",
+        "action_counts": {
+          "assign_delivery": 3,
+          "fallback_to_locker": 3,
+          "attempt_delivery": 3,
+          "hold_fleet": 1,
+          "prioritize_order": 30
+        },
+        "triggered_scripted_events": [],
+        "reward_breakdown": {
+          "positive": {
+            "battery_safe_operation": 129.0,
+            "disruption_recovery": 20.0,
+            "efficient_assignment": 7.5,
+            "fleet_utilization": 12.0,
+            "regulatory_compliance": 114.0,
+            "successful_locker_fallback": 12.0
+          },
+          "negative": {
+            "failed_delivery_attempt": -15.0,
+            "idle_with_pending_orders": -387.0,
+            "missed_deadline": -96.0,
+            "overloaded_assignment": -12.0
+          },
+          "total": -215.5
+        }
+      },
+      "demo": {
+        "task_id": "demo",
+        "policy_id": "improved",
+        "seed": 101,
+        "total_reward": 89.0,
+        "normalized_score": 0.586111111111111,
+        "steps_completed": 18,
+        "actions_taken": 18,
+        "average_step_reward": 4.944444444444445,
+        "total_orders": 6,
+        "total_urgent_orders": 3,
+        "completed_deliveries": 2,
+        "failed_deliveries": 0,
+        "urgent_successes": 1,
+        "invalid_action_count": 0,
+        "deadline_miss_count": 5,
+        "critical_battery_events": 0,
+        "safety_violations": 0,
+        "done_reason": "horizon_reached",
+        "terminated_by": "environment",
+        "action_counts": {
+          "assign_delivery": 3,
+          "attempt_delivery": 3,
+          "fallback_to_locker": 1,
+          "reroute": 1,
+          "hold_fleet": 2,
+          "prioritize_order": 8
+        },
+        "triggered_scripted_events": [
+          "urgent_insertion",
+          "no_fly_shift",
+          "failed_drop"
+        ],
+        "reward_breakdown": {
+          "positive": {
+            "battery_safe_operation": 66.0,
+            "deadline_met": 4.0,
+            "delivery_success": 22.0,
+            "disruption_recovery": 5.0,
+            "efficient_assignment": 7.5,
+            "fleet_utilization": 16.0,
+            "regulatory_compliance": 51.0,
+            "safe_reroute": 4.5,
+            "successful_locker_fallback": 4.0,
+            "urgent_delivery_success": 14.0
+          },
+          "negative": {
+            "failed_delivery_attempt": -5.0,
+            "idle_with_pending_orders": -48.0,
+            "missed_deadline": -40.0,
+            "overloaded_assignment": -12.0
+          },
+          "total": 89.0
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DroneZ Replay Demo</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">DroneZ Replay</p>
+          <h1>LLM Fleet Operations Controller</h1>
+          <p class="subhead">
+            Replay actual environment traces showing drones, hazards, charging,
+            urgent orders, and reward evolution over time.
+          </p>
+        </div>
+        <div class="controls">
+          <label>
+            Scenario
+            <select id="scenarioSelect">
+              <option value="demo">demo</option>
+              <option value="easy">easy</option>
+              <option value="medium">medium</option>
+              <option value="hard">hard</option>
+            </select>
+          </label>
+          <label>
+            Policy
+            <select id="policySelect">
+              <option value="random">random</option>
+              <option value="naive">naive</option>
+              <option value="heuristic">heuristic</option>
+              <option value="improved" selected>improved</option>
+            </select>
+          </label>
+          <label>
+            Speed
+            <input id="speedRange" type="range" min="250" max="2000" step="250" value="1000" />
+          </label>
+          <div class="button-row">
+            <button id="loadBtn">Load</button>
+            <button id="playBtn">Play</button>
+            <button id="pauseBtn">Pause</button>
+            <button id="resetBtn">Reset</button>
+            <button id="prevBtn">Back</button>
+            <button id="nextBtn">Next</button>
+          </div>
+        </div>
+      </header>
+
+      <main class="layout">
+        <section class="viewport-card">
+          <svg id="mapSvg" viewBox="0 0 900 520" aria-label="DroneZ city replay map"></svg>
+        </section>
+
+        <aside class="sidebar">
+          <section class="panel">
+            <h2>Stage Flow</h2>
+            <ol class="flow-list">
+              <li>Load `random` or `naive` first to show weak control.</li>
+              <li>Switch to `heuristic` to show the stable baseline.</li>
+              <li>Switch to `improved` to show the strongest deterministic controller.</li>
+              <li>Use the reward breakdown and policy snapshot to explain why the score changes.</li>
+            </ol>
+          </section>
+
+          <section class="panel metrics">
+            <h2>Live Metrics</h2>
+            <div id="metricsGrid" class="metric-grid"></div>
+          </section>
+
+          <section class="panel">
+            <h2>Policy Snapshot</h2>
+            <div id="comparisonSummary" class="summary-stack"></div>
+          </section>
+
+          <section class="panel">
+            <h2>Reward Breakdown</h2>
+            <div id="rewardBreakdown" class="reward-breakdown"></div>
+          </section>
+
+          <section class="panel">
+            <h2>Recent Events</h2>
+            <ul id="eventsList" class="event-list"></ul>
+          </section>
+
+          <section class="panel">
+            <h2>Frame Summary</h2>
+            <pre id="frameSummary" class="summary-box"></pre>
+          </section>
+        </aside>
+      </main>
+    </div>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

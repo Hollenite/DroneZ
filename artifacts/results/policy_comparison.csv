@@ -1,0 +1,17 @@
+policy_id,task_id,total_reward,normalized_score,completed_deliveries,urgent_successes,failed_deliveries,deadline_miss_count,critical_battery_events,safety_violations,invalid_action_count,average_step_reward,steps_completed,actions_taken,done_reason,terminated_by
+random,easy,-278.0,0.01,2,1,0,3,6,47,0,-13.9,20,20,horizon_reached,environment
+random,medium,-1231.5,0.01,2,1,0,6,38,138,0,-41.05,30,30,horizon_reached,environment
+random,hard,-2014.0,0.01,3,1,0,13,69,178,0,-50.35,40,40,horizon_reached,environment
+random,demo,-162.5,0.01,2,1,0,5,5,33,0,-9.027777777777779,18,18,horizon_reached,environment
+naive,easy,-315.5,0.01,2,1,0,3,0,53,0,-15.775,20,20,horizon_reached,environment
+naive,medium,-1259.5,0.01,4,2,0,5,7,161,0,-41.983333333333334,30,30,horizon_reached,environment
+naive,hard,-1969.5,0.01,0,0,0,13,2,211,0,-49.2375,40,40,horizon_reached,environment
+naive,demo,-607.5,0.01,0,0,0,6,3,72,0,-33.75,18,18,horizon_reached,environment
+heuristic,easy,-154.0,0.01,3,1,0,9,0,27,0,-7.7,20,20,horizon_reached,environment
+heuristic,medium,-439.5,0.01,3,2,0,18,0,65,0,-14.65,30,30,horizon_reached,environment
+heuristic,hard,-564.5,0.01,2,1,0,13,0,82,0,-14.1125,40,40,horizon_reached,environment
+heuristic,demo,32.0,0.2888888888888889,2,1,0,5,0,8,0,1.7777777777777777,18,18,horizon_reached,environment
+improved,easy,35.0,0.6141666666666666,2,1,0,2,0,0,0,1.75,20,20,horizon_reached,environment
+improved,medium,-77.0,0.01,1,1,0,5,0,0,0,-2.566666666666667,30,30,horizon_reached,environment
+improved,hard,-215.5,0.01,0,0,0,12,0,0,0,-5.3875,40,40,horizon_reached,environment
+improved,demo,89.0,0.586111111111111,2,1,0,5,0,0,0,4.944444444444445,18,18,horizon_reached,environment

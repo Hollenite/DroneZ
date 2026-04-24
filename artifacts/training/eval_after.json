@@ -1,0 +1,4 @@
+{
+  "status": "not_run",
+  "note": "No GRPO training was executed in dry-run mode, so there is no after-training evaluation yet."
+}

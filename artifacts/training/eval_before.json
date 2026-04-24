@@ -1,0 +1,159 @@
+{
+  "status": "reference_only",
+  "note": "Reference scripted baselines before any model training.",
+  "payload": {
+    "status": "reference_only",
+    "note": "These are deterministic scripted-policy reference runs against the real DroneZ environment. They are useful for smoke testing and colab setup, but they are not a trained-model evaluation.",
+    "ranking": [
+      "improved",
+      "heuristic",
+      "random"
+    ],
+    "aggregate": {
+      "random": {
+        "mean_total_reward": -921.5,
+        "mean_normalized_score": 0.01,
+        "completed_deliveries": 9,
+        "failed_deliveries": 0,
+        "urgent_successes": 4,
+        "invalid_actions": 0,
+        "deadline_misses": 27,
+        "safety_violations": 396,
+        "actions_taken": 108
+      },
+      "heuristic": {
+        "mean_total_reward": -281.5,
+        "mean_normalized_score": 0.07972222222222224,
+        "completed_deliveries": 10,
+        "failed_deliveries": 0,
+        "urgent_successes": 5,
+        "invalid_actions": 0,
+        "deadline_misses": 45,
+        "safety_violations": 182,
+        "actions_taken": 108
+      },
+      "improved": {
+        "mean_total_reward": -42.125,
+        "mean_normalized_score": 0.3050694444444444,
+        "completed_deliveries": 5,
+        "failed_deliveries": 0,
+        "urgent_successes": 3,
+        "invalid_actions": 0,
+        "deadline_misses": 24,
+        "safety_violations": 0,
+        "actions_taken": 108
+      }
+    },
+    "demo_improved": {
+      "task_id": "demo",
+      "policy_id": "improved",
+      "seed": 101,
+      "total_reward": 89.0,
+      "normalized_score": 0.586111111111111,
+      "steps_completed": 18,
+      "actions_taken": 18,
+      "average_step_reward": 4.944444444444445,
+      "total_orders": 6,
+      "total_urgent_orders": 3,
+      "completed_deliveries": 2,
+      "failed_deliveries": 0,
+      "urgent_successes": 1,
+      "invalid_action_count": 0,
+      "deadline_miss_count": 5,
+      "critical_battery_events": 0,
+      "safety_violations": 0,
+      "done_reason": "horizon_reached",
+      "terminated_by": "environment",
+      "action_counts": {
+        "assign_delivery": 3,
+        "attempt_delivery": 3,
+        "fallback_to_locker": 1,
+        "reroute": 1,
+        "hold_fleet": 2,
+        "prioritize_order": 8
+      },
+      "triggered_scripted_events": [
+        "urgent_insertion",
+        "no_fly_shift",
+        "failed_drop"
+      ],
+      "reward_breakdown": {
+        "positive": {
+          "battery_safe_operation": 66.0,
+          "deadline_met": 4.0,
+          "delivery_success": 22.0,
+          "disruption_recovery": 5.0,
+          "efficient_assignment": 7.5,
+          "fleet_utilization": 16.0,
+          "regulatory_compliance": 51.0,
+          "safe_reroute": 4.5,
+          "successful_locker_fallback": 4.0,
+          "urgent_delivery_success": 14.0
+        },
+        "negative": {
+          "failed_delivery_attempt": -5.0,
+          "idle_with_pending_orders": -48.0,
+          "missed_deadline": -40.0,
+          "overloaded_assignment": -12.0
+        },
+        "total": 89.0
+      }
+    },
+    "demo_heuristic": {
+      "task_id": "demo",
+      "policy_id": "heuristic",
+      "seed": 101,
+      "total_reward": 32.0,
+      "normalized_score": 0.2888888888888889,
+      "steps_completed": 18,
+      "actions_taken": 18,
+      "average_step_reward": 1.7777777777777777,
+      "total_orders": 6,
+      "total_urgent_orders": 3,
+      "completed_deliveries": 2,
+      "failed_deliveries": 0,
+      "urgent_successes": 1,
+      "invalid_action_count": 0,
+      "deadline_miss_count": 5,
+      "critical_battery_events": 0,
+      "safety_violations": 8,
+      "done_reason": "horizon_reached",
+      "terminated_by": "environment",
+      "action_counts": {
+        "assign_delivery": 4,
+        "attempt_delivery": 4,
+        "fallback_to_locker": 2,
+        "reroute": 2,
+        "hold_fleet": 3,
+        "prioritize_order": 3
+      },
+      "triggered_scripted_events": [
+        "urgent_insertion",
+        "no_fly_shift",
+        "failed_drop"
+      ],
+      "reward_breakdown": {
+        "positive": {
+          "battery_safe_operation": 73.5,
+          "deadline_met": 4.0,
+          "delivery_success": 22.0,
+          "disruption_recovery": 10.0,
+          "efficient_assignment": 7.5,
+          "fleet_utilization": 26.0,
+          "regulatory_compliance": 36.0,
+          "safe_reroute": 9.0,
+          "successful_locker_fallback": 8.0,
+          "urgent_delivery_success": 14.0
+        },
+        "negative": {
+          "failed_delivery_attempt": -10.0,
+          "idle_with_pending_orders": -48.0,
+          "missed_deadline": -40.0,
+          "overloaded_assignment": -16.0,
+          "unsafe_zone_entry": -64.0
+        },
+        "total": 32.0
+      }
+    }
+  }
+}

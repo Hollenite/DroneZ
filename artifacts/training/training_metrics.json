@@ -1,0 +1,37 @@
+{
+  "mode": "dry-run",
+  "training_executed": false,
+  "note": "Dry-run mode prepares the real DroneZ prompt/action interface and environment evaluation metadata without claiming a GRPO run happened.",
+  "recommended_models": [
+    "Qwen/Qwen2.5-0.5B-Instruct",
+    "Qwen/Qwen2.5-1.5B-Instruct",
+    "google/gemma-2-2b-it"
+  ],
+  "selected_model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "curriculum": [
+    "easy",
+    "medium",
+    "demo",
+    "hard"
+  ],
+  "dependency_status": {
+    "datasets": false,
+    "transformers": false,
+    "trl": false,
+    "accelerate": false
+  },
+  "prompt_example": "You are the DroneZ fleet operations controller.\nReturn exactly one JSON action with keys `action` and `params`.\nUse only supported actions from `action_reminder`.\n\nTIME_STEP: 0 / 20\nTASK: easy\nPENDING_ORDERS: 4\n\nFLEET:\n- FA-1 | type=fast_light | battery=95 | zone=hub | assigned=None | eta=None | target=None | corridor=None | risk=low | hold_reason=None\n- HE-1 | type=heavy_carrier | battery=91 | zone=hub | assigned=None | eta=None | target=None | corridor=None | risk=low | hold_reason=None\n- LO-1 | type=long_range_sensitive | battery=78 | zone=hub | assigned=None | eta=None | target=None | corridor=None | risk=low | hold_reason=None\nORDERS:\n- O1 | priority=urgent | deadline=6 | recipient=available | retry=0 | status=queued\n- O3 | priority=normal | deadline=5 | recipient=available | retry=0 | status=queued\n- O4 | priority=normal | deadline=5 | recipient=available | retry=0 | status=queued\n- O2 | priority=normal | deadline=6 | recipient=available | retry=0 | status=queued\nCHARGING:\n- C_FIELD | occupancy=1/2 | queue=1 | reserved=[]\n- C_HUB | occupancy=1/3 | queue=0 | reserved=[]\nRECENT EVENTS:\n- Task easy initialized with seed 11.\nSTEP_REWARD: 0.00\n\nSUPPORTED_ACTIONS: assign_delivery, reroute, return_to_charge, reserve_charger, delay_order, prioritize_order, swap_assignments, attempt_delivery, fallback_to_locker, hold_fleet, resume_operations\nRESPONSE_FORMAT:\n{\"action\": \"assign_delivery\", \"params\": {\"drone_id\": \"FA-1\", \"order_id\": \"O1\"}}",
+  "sample_action_json": {
+    "action": "prioritize_order",
+    "params": {
+      "order_id": "O1"
+    }
+  },
+  "action_parser_example": {
+    "action": "prioritize_order",
+    "params": {
+      "order_id": "O1"
+    }
+  },
+  "output_dir": "/Users/saichaitu/Desktop/Meta_R2/DroneZ/artifacts/training"
+}
