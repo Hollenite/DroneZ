@@ -15,8 +15,11 @@ def merge_breakdowns(current: RewardBreakdown, delta: RewardBreakdown) -> Reward
     return RewardBreakdown.from_components(positive=positive, negative=negative)
 
 
-def make_invalid_action_breakdown(penalty: float) -> RewardBreakdown:
-    return RewardBreakdown.from_components(negative={"invalid_action": penalty})
+def make_invalid_action_breakdown(penalty: float, loop_penalty: float = 0.0) -> RewardBreakdown:
+    negative = {"invalid_action": penalty}
+    if loop_penalty:
+        negative["loop_or_no_progress"] = loop_penalty
+    return RewardBreakdown.from_components(negative=negative)
 
 
 def serialize_breakdown(breakdown: RewardBreakdown) -> dict[str, object]:

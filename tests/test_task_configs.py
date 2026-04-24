@@ -31,6 +31,7 @@ def test_reward_and_fleet_configs_load() -> None:
     reward_config = RewardWeightsConfig.model_validate(reward_payload)
     fleet_config = FleetProfilesConfig.model_validate(fleet_payload)
 
-    assert "on_time_delivery" in reward_config.positive
+    assert "delivery_success" in reward_config.positive
     assert "invalid_action" in reward_config.negative
     assert len(fleet_config.profiles) == 4
+    assert len(fleet_config.deployment_profiles) == 6

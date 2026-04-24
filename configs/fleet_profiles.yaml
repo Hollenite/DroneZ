@@ -4,30 +4,167 @@ profiles:
     payload_capacity: 2
     battery_capacity: 100
     cruise_speed: 3
+    max_speed: 4
+    nominal_range_km: 12
+    charging_rate: 1.4
     weather_tolerance: low
+    no_fly_compliance: strict
+    emergency_priority_capability: false
+    energy_consumption_rate: 1.2
+    failure_probability_modifier: 1.0
+    cost_per_km: 0.8
     can_deliver: true
+    delivery_capable: true
     communication_role: delivery
+    best_use_case: fast urban handoff orders
   heavy_carrier:
     drone_type: heavy_carrier
     payload_capacity: 6
     battery_capacity: 140
     cruise_speed: 1
+    max_speed: 2
+    nominal_range_km: 18
+    charging_rate: 1.0
     weather_tolerance: medium
+    no_fly_compliance: strict
+    emergency_priority_capability: false
+    energy_consumption_rate: 1.6
+    failure_probability_modifier: 1.1
+    cost_per_km: 1.4
     can_deliver: true
+    delivery_capable: true
     communication_role: delivery
+    best_use_case: bulky package delivery
   long_range_sensitive:
     drone_type: long_range_sensitive
     payload_capacity: 3
     battery_capacity: 125
     cruise_speed: 2
+    max_speed: 3
+    nominal_range_km: 28
+    charging_rate: 1.1
     weather_tolerance: low
+    no_fly_compliance: strict
+    emergency_priority_capability: false
+    energy_consumption_rate: 1.0
+    failure_probability_modifier: 1.15
+    cost_per_km: 1.1
     can_deliver: true
+    delivery_capable: true
     communication_role: delivery
+    best_use_case: long-distance mixed urban corridors
   relay:
     drone_type: relay
     payload_capacity: 0
     battery_capacity: 110
     cruise_speed: 2
+    max_speed: 3
+    nominal_range_km: 20
+    charging_rate: 1.2
     weather_tolerance: medium
+    no_fly_compliance: strict
+    emergency_priority_capability: false
+    energy_consumption_rate: 0.8
+    failure_probability_modifier: 0.7
+    cost_per_km: 0.6
     can_deliver: false
+    delivery_capable: false
     communication_role: relay
+    best_use_case: signal extension and fleet coordination
+deployment_profiles:
+  light_food_delivery_drone:
+    profile_id: light_food_delivery_drone
+    base_archetype: fast_light
+    max_speed: 5
+    payload_capacity: 2
+    battery_capacity: 95
+    nominal_range_km: 10
+    charging_rate: 1.6
+    weather_tolerance: low
+    no_fly_compliance: strict
+    emergency_priority_capability: false
+    energy_consumption_rate: 1.3
+    failure_probability_modifier: 1.0
+    cost_per_km: 0.7
+    delivery_capable: true
+    best_use_case: hot food and short urban deliveries
+  medical_priority_drone:
+    profile_id: medical_priority_drone
+    base_archetype: long_range_sensitive
+    max_speed: 4
+    payload_capacity: 3
+    battery_capacity: 135
+    nominal_range_km: 26
+    charging_rate: 1.3
+    weather_tolerance: medium
+    no_fly_compliance: strict
+    emergency_priority_capability: true
+    energy_consumption_rate: 1.0
+    failure_probability_modifier: 0.8
+    cost_per_km: 1.8
+    delivery_capable: true
+    best_use_case: urgent medical and lab dispatch
+  heavy_package_drone:
+    profile_id: heavy_package_drone
+    base_archetype: heavy_carrier
+    max_speed: 2
+    payload_capacity: 8
+    battery_capacity: 150
+    nominal_range_km: 16
+    charging_rate: 0.9
+    weather_tolerance: medium
+    no_fly_compliance: strict
+    emergency_priority_capability: false
+    energy_consumption_rate: 1.8
+    failure_probability_modifier: 1.2
+    cost_per_km: 1.7
+    delivery_capable: true
+    best_use_case: bulk parcel or enterprise payload delivery
+  long_range_rural_drone:
+    profile_id: long_range_rural_drone
+    base_archetype: long_range_sensitive
+    max_speed: 3
+    payload_capacity: 4
+    battery_capacity: 150
+    nominal_range_km: 40
+    charging_rate: 1.0
+    weather_tolerance: medium
+    no_fly_compliance: strict
+    emergency_priority_capability: false
+    energy_consumption_rate: 1.1
+    failure_probability_modifier: 0.9
+    cost_per_km: 1.3
+    delivery_capable: true
+    best_use_case: suburban and rural line-haul delivery
+  urban_fast_drone:
+    profile_id: urban_fast_drone
+    base_archetype: fast_light
+    max_speed: 5
+    payload_capacity: 2
+    battery_capacity: 105
+    nominal_range_km: 14
+    charging_rate: 1.5
+    weather_tolerance: low
+    no_fly_compliance: strict
+    emergency_priority_capability: false
+    energy_consumption_rate: 1.2
+    failure_probability_modifier: 0.95
+    cost_per_km: 0.9
+    delivery_capable: true
+    best_use_case: dense urban same-hour delivery
+  relay_support_drone:
+    profile_id: relay_support_drone
+    base_archetype: relay
+    max_speed: 3
+    payload_capacity: 0
+    battery_capacity: 120
+    nominal_range_km: 24
+    charging_rate: 1.2
+    weather_tolerance: medium
+    no_fly_compliance: strict
+    emergency_priority_capability: false
+    energy_consumption_rate: 0.7
+    failure_probability_modifier: 0.6
+    cost_per_km: 0.5
+    delivery_capable: false
+    best_use_case: comms relay and disruption recovery support

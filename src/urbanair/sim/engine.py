@@ -106,16 +106,21 @@ class SimulatorState:
     just_reserved_charge_queue_miss: int = 0
     just_reroutes: int = 0
     just_helpful_reroutes: int = 0
+    just_unsafe_zone_events: int = 0
+    just_efficient_assignments: int = 0
+    just_successful_locker_fallback: int = 0
+    just_charging_misuse: int = 0
     charging_queue_order: list[str] = field(default_factory=list)
     delivery_attempt_required: set[str] = field(default_factory=set)
     auto_attempt_enabled: bool = False
 
 
 class SimulatorEngine:
-    def __init__(self, task_configs: dict[str, TaskConfig], fleet_profiles, reward_weights) -> None:
+    def __init__(self, task_configs: dict[str, TaskConfig], fleet_profiles, reward_weights, deployment_profiles=None) -> None:
         self.task_configs = task_configs
         self.fleet_profiles = fleet_profiles
         self.reward_weights = reward_weights
+        self.deployment_profiles = deployment_profiles or {}
 
     @classmethod
     def from_repo_configs(cls) -> "SimulatorEngine":
@@ -127,10 +132,13 @@ class SimulatorEngine:
         reward_weights = yaml.safe_load((CONFIG_DIR / "reward_weights.yaml").read_text())
         from ..models import FleetProfilesConfig, RewardWeightsConfig
 
+        fleet_profiles_config = FleetProfilesConfig.model_validate(fleet_profiles)
+
         return cls(
             task_configs=task_configs,
-            fleet_profiles=FleetProfilesConfig.model_validate(fleet_profiles).profiles,
+            fleet_profiles=fleet_profiles_config.profiles,
             reward_weights=RewardWeightsConfig.model_validate(reward_weights),
+            deployment_profiles=fleet_profiles_config.deployment_profiles,
         )
 
     def reset(self, task_id: str) -> SimulatorState:
@@ -189,9 +197,13 @@ class SimulatorEngine:
         state.just_reserved_charge_queue_miss = 0
         state.just_reroutes = 0
         state.just_helpful_reroutes = 0
+        state.just_efficient_assignments = 0
+        state.just_successful_locker_fallback = 0
+        state.just_charging_misuse = 0
         reward_inputs = {
             "deliveries_completed": 0.0,
             "urgent_successes": 0.0,
+            "on_time_deliveries": 0.0,
             "failed_attempts": 0.0,
             "deadline_misses": 0.0,
             "critical_battery": 0.0,
@@ -228,6 +240,9 @@ class SimulatorEngine:
         reward_inputs["failed_attempts"] += float(len(recovery_actions))
         reward_inputs["urgent_successes"] += float(
             sum(1 for order in state.orders if order.order_id in delivered_ids and order.priority.value in {"urgent", "medical"})
+        )
+        reward_inputs["on_time_deliveries"] += float(
+            sum(1 for order in state.orders if order.order_id in delivered_ids and order.deadline > 0)
         )
         state.just_recovery_successes = len(state.just_recovered_orders)
         state.just_low_reattempt = sum(
@@ -338,6 +353,7 @@ class SimulatorEngine:
             order = next((item for item in state.orders if item.order_id == action["order_id"] and item.order_id not in state.resolved_order_ids), None)
             drone = next((item for item in state.fleet if item.drone_id == action["drone_id"]), None)
             if order and drone and drone.status in {DroneStatus.IDLE, DroneStatus.HOLDING}:
+                sector = next((item for item in state.sectors if item.zone_id == order.zone_id), None)
                 drone.hold_reason = None
                 order.assigned_drone_id = drone.drone_id
                 order.status = "assigned"
@@ -346,6 +362,24 @@ class SimulatorEngine:
                     state.just_recovered_orders.add(order.order_id)
                 state.just_overloaded_assignments += int(sum(1 for item in state.orders if item.assigned_drone_id == drone.drone_id) > 0)
                 state.delivery_attempt_required.discard(order.order_id)
+                hazardous_target = bool(
+                    sector
+                    and (
+                        sector.is_no_fly
+                        or sector.operations_paused
+                        or sector.weather.value in {"heavy_rain", "storm"}
+                        or sector.congestion_score >= 0.7
+                    )
+                )
+                state.just_unsafe_zone_events += int(hazardous_target)
+                state.just_efficient_assignments += int(
+                    not hazardous_target
+                    and drone.battery >= 35
+                    and (
+                        order.priority.value == "normal"
+                        or drone.payload_capacity >= order.package_weight
+                    )
+                )
                 events.extend(assign_order(drone, order.order_id, order.zone_id, state.sectors))
 
         elif action_type == ActionType.REROUTE:
@@ -358,9 +392,26 @@ class SimulatorEngine:
                 drone.active_corridor = corridor
                 drone.flight_path = [drone.current_zone, corridor, drone.target_zone]
                 drone.eta = estimate_eta(drone, drone.target_zone, state.sectors, corridor)
-                if corridor == previous_corridor or (previous_eta is not None and drone.eta >= previous_eta):
+                safety_motivated = bool(
+                    sector
+                    and corridor == "safe"
+                    and (
+                        sector.is_no_fly
+                        or sector.operations_paused
+                        or sector.weather.value in {"heavy_rain", "storm"}
+                        or sector.congestion_score >= 0.7
+                    )
+                )
+                if safety_motivated:
+                    state.just_helpful_reroutes += 1
+                elif corridor == previous_corridor or (previous_eta is not None and drone.eta >= previous_eta):
                     state.just_reroutes += 1
-                elif sector is not None and (sector.is_no_fly or sector.operations_paused or sector.congestion_score >= 0.4):
+                elif sector is not None and (
+                    sector.is_no_fly
+                    or sector.operations_paused
+                    or sector.congestion_score >= 0.4
+                    or sector.weather.value in {"heavy_rain", "storm"}
+                ):
                     state.just_helpful_reroutes += 1
                 events.append(f"{drone.drone_id} rerouted via {corridor} toward {drone.target_zone}.")
 
@@ -368,6 +419,13 @@ class SimulatorEngine:
             drone = next((item for item in state.fleet if item.drone_id == action["drone_id"]), None)
             station = next((item for item in state.charging_stations if item.station_id == action["station_id"]), None)
             if drone and station:
+                pending_urgent = any(
+                    item.order_id not in state.resolved_order_ids
+                    and item.status != "canceled"
+                    and item.priority.value in {"urgent", "medical"}
+                    for item in state.orders
+                )
+                state.just_charging_misuse += int(drone.battery >= 70 and pending_urgent)
                 if drone.assigned_order_id:
                     order = next((item for item in state.orders if item.order_id == drone.assigned_order_id), None)
                     if order is not None:
@@ -386,12 +444,21 @@ class SimulatorEngine:
             station = next((item for item in state.charging_stations if item.station_id == action["station_id"]), None)
             if drone and station:
                 state.just_reserved_chargers += 1
+                pending_urgent = any(
+                    item.order_id not in state.resolved_order_ids
+                    and item.status != "canceled"
+                    and item.priority.value in {"urgent", "medical"}
+                    for item in state.orders
+                )
+                state.just_charging_misuse += int(drone.battery >= 70 and pending_urgent)
                 events.extend(send_to_charge(drone, station, reserve_only=True))
 
         elif action_type == ActionType.PRIORITIZE_ORDER:
             order = next((item for item in state.orders if item.order_id == action["order_id"]), None)
             if order:
-                order.deadline = max(1, order.deadline - 1)
+                # Prioritization can accelerate attention to an order, but it should never
+                # "revive" an already missed deadline back to 1 and create synthetic misses.
+                order.deadline = max(0, order.deadline - 1)
                 events.append(f"{order.order_id} was prioritized.")
 
         elif action_type == ActionType.DELAY_ORDER:
@@ -445,6 +512,7 @@ class SimulatorEngine:
             order = next((item for item in state.orders if item.order_id == action["order_id"]), None)
             if order:
                 state.just_fallback_actions += 1
+                state.just_successful_locker_fallback += int(order.recipient_availability == RecipientAvailability.UNAVAILABLE)
                 order.drop_mode = DropMode.LOCKER
                 order.recipient_availability = RecipientAvailability.AVAILABLE
                 order.status = "locker_fallback"
@@ -530,37 +598,44 @@ class SimulatorEngine:
         positive: dict[str, float] = {}
         negative: dict[str, float] = {}
         if reward_inputs["deliveries_completed"]:
-            positive["on_time_delivery"] = reward_inputs["deliveries_completed"] * self.reward_weights.positive["on_time_delivery"]
+            positive["delivery_success"] = reward_inputs["deliveries_completed"] * self.reward_weights.positive["delivery_success"]
         if reward_inputs["urgent_successes"]:
-            positive["urgent_delivery_completion"] = reward_inputs["urgent_successes"] * self.reward_weights.positive["urgent_delivery_completion"]
+            positive["urgent_delivery_success"] = reward_inputs["urgent_successes"] * self.reward_weights.positive["urgent_delivery_success"]
+        if reward_inputs["on_time_deliveries"]:
+            positive["deadline_met"] = reward_inputs["on_time_deliveries"] * self.reward_weights.positive["deadline_met"]
         if reward_inputs["failed_attempts"]:
             negative["failed_delivery_attempt"] = reward_inputs["failed_attempts"] * self.reward_weights.negative["failed_delivery_attempt"]
         if reward_inputs["deadline_misses"]:
-            negative["missed_delivery_window"] = reward_inputs["deadline_misses"] * self.reward_weights.negative["missed_delivery_window"]
+            negative["missed_deadline"] = reward_inputs["deadline_misses"] * self.reward_weights.negative["missed_deadline"]
         if reward_inputs["critical_battery"]:
-            negative["battery_critical_state"] = reward_inputs["critical_battery"] * self.reward_weights.negative["battery_critical_state"]
-        if state.just_balanced_charge:
-            positive["balanced_charging_usage"] = state.just_balanced_charge * self.reward_weights.positive["balanced_charging_usage"]
+            negative["battery_critical"] = reward_inputs["critical_battery"] * self.reward_weights.negative["battery_critical"]
+        if state.just_balanced_charge or state.just_energy_efficient:
+            positive["battery_safe_operation"] = (
+                (state.just_balanced_charge + state.just_energy_efficient)
+                * self.reward_weights.positive["battery_safe_operation"]
+            )
         if state.just_recovery_successes:
             positive["disruption_recovery"] = state.just_recovery_successes * self.reward_weights.positive["disruption_recovery"]
-        if state.just_low_reattempt:
-            positive["low_reattempt_rate"] = state.just_low_reattempt * self.reward_weights.positive["low_reattempt_rate"]
+        if state.just_successful_locker_fallback:
+            positive["successful_locker_fallback"] = state.just_successful_locker_fallback * self.reward_weights.positive["successful_locker_fallback"]
+        if state.just_efficient_assignments:
+            positive["efficient_assignment"] = state.just_efficient_assignments * self.reward_weights.positive["efficient_assignment"]
         if state.just_fleet_utilization:
             positive["fleet_utilization"] = state.just_fleet_utilization * self.reward_weights.positive["fleet_utilization"]
-        if state.just_energy_efficient:
-            positive["energy_efficiency"] = state.just_energy_efficient * self.reward_weights.positive["energy_efficiency"]
         if state.just_policy_compliance:
             positive["regulatory_compliance"] = state.just_policy_compliance * self.reward_weights.positive["regulatory_compliance"]
+        if state.just_helpful_reroutes:
+            positive["safe_reroute"] = state.just_helpful_reroutes * self.reward_weights.positive["safe_reroute"]
         if state.just_idle_with_pending:
             negative["idle_with_pending_orders"] = state.just_idle_with_pending * self.reward_weights.negative["idle_with_pending_orders"]
         if state.just_abandoned_urgent:
             negative["abandoned_urgent_order"] = state.just_abandoned_urgent * self.reward_weights.negative["abandoned_urgent_order"]
-        if state.just_congestion_penalty:
-            negative["congestion_from_poor_allocation"] = state.just_congestion_penalty * self.reward_weights.negative["congestion_from_poor_allocation"]
+        if state.just_unsafe_zone_events:
+            negative["unsafe_zone_entry"] = state.just_unsafe_zone_events * self.reward_weights.negative["unsafe_zone_entry"]
         if state.just_overloaded_assignments:
             negative["overloaded_assignment"] = state.just_overloaded_assignments * self.reward_weights.negative["overloaded_assignment"]
         if state.just_reroutes:
             negative["unnecessary_reroute"] = state.just_reroutes * self.reward_weights.negative["unnecessary_reroute"]
-        if state.just_helpful_reroutes:
-            positive["regulatory_compliance"] = positive.get("regulatory_compliance", 0.0) + state.just_helpful_reroutes * self.reward_weights.positive["regulatory_compliance"]
+        if state.just_charging_misuse:
+            negative["charging_misuse"] = state.just_charging_misuse * self.reward_weights.negative["charging_misuse"]
         return RewardBreakdown.from_components(positive=positive, negative=negative)

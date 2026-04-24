@@ -40,3 +40,14 @@ def test_done_when_no_viable_drones_remain() -> None:
     assert reward == -5.0
     assert done is True
     assert info["done_reason"] == "no_viable_drones"
+
+
+def test_done_when_invalid_action_cap_is_reached() -> None:
+    env = DroneZEnvironment(max_invalid_actions_per_episode=2)
+    env.reset("easy")
+
+    env.step({"action": "unknown_action", "params": {}})
+    _, _, done, info = env.step({"action": "unknown_action", "params": {}})
+
+    assert done is True
+    assert info["done_reason"] == "invalid_action_cap_reached"

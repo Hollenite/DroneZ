@@ -1,20 +1,23 @@
 positive:
-  on_time_delivery: 12.0
-  urgent_delivery_completion: 10.0
-  fleet_utilization: 2.5
-  energy_efficiency: 1.5
-  balanced_charging_usage: 1.5
-  disruption_recovery: 4.0
-  low_reattempt_rate: 2.0
+  delivery_success: 11.0
+  urgent_delivery_success: 14.0
+  deadline_met: 4.0
+  safe_reroute: 4.5
+  disruption_recovery: 5.0
+  battery_safe_operation: 1.5
+  efficient_assignment: 2.5
+  fleet_utilization: 2.0
   regulatory_compliance: 3.0
+  successful_locker_fallback: 4.0
 negative:
-  missed_delivery_window: -8.0
-  battery_critical_state: -9.0
-  restricted_zone_violation: -12.0
-  unnecessary_reroute: -2.0
-  failed_delivery_attempt: -4.0
-  idle_with_pending_orders: -3.0
-  congestion_from_poor_allocation: -3.5
-  overloaded_assignment: -4.5
-  abandoned_urgent_order: -10.0
   invalid_action: -5.0
+  missed_deadline: -8.0
+  failed_delivery_attempt: -5.0
+  battery_critical: -10.0
+  unsafe_zone_entry: -8.0
+  unnecessary_reroute: -2.0
+  abandoned_urgent_order: -10.0
+  idle_with_pending_orders: -3.0
+  overloaded_assignment: -4.0
+  charging_misuse: -3.0
+  loop_or_no_progress: -1.5

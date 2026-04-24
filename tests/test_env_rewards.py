@@ -42,5 +42,5 @@ def test_return_to_charge_emits_extended_reward_components() -> None:
     _, _, _, info = env.step({"action": "return_to_charge", "params": {"drone_id": drone["drone_id"], "station_id": station["station_id"]}})
 
     breakdown = info["reward_breakdown"]
-    assert "balanced_charging_usage" in breakdown["positive"]
+    assert "battery_safe_operation" in breakdown["positive"]
     assert "fleet_utilization" in breakdown["positive"] or "idle_with_pending_orders" in breakdown["negative"]

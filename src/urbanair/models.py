@@ -140,13 +140,21 @@ class EpisodeSummary(BaseModel):
     policy_id: str | None = None
     seed: int | None = None
     total_reward: float
+    normalized_score: float = Field(ge=0.0, le=1.0)
     steps_completed: int = Field(ge=0)
+    actions_taken: int = Field(default=0, ge=0)
+    average_step_reward: float = 0.0
+    total_orders: int = Field(default=0, ge=0)
+    total_urgent_orders: int = Field(default=0, ge=0)
     completed_deliveries: int = Field(default=0, ge=0)
     failed_deliveries: int = Field(default=0, ge=0)
     urgent_successes: int = Field(default=0, ge=0)
     invalid_action_count: int = Field(default=0, ge=0)
     deadline_miss_count: int = Field(default=0, ge=0)
     critical_battery_events: int = Field(default=0, ge=0)
+    safety_violations: int = Field(default=0, ge=0)
+    done_reason: str = "ongoing"
+    terminated_by: str = "environment"
     action_counts: dict[str, int] = Field(default_factory=dict)
     triggered_scripted_events: list[str] = Field(default_factory=list)
     reward_breakdown: RewardBreakdown = Field(default_factory=RewardBreakdown)
@@ -186,13 +194,42 @@ class FleetProfile(BaseModel):
     payload_capacity: int = Field(ge=0)
     battery_capacity: int = Field(ge=1)
     cruise_speed: int = Field(ge=1)
+    max_speed: int = Field(default=1, ge=1)
+    nominal_range_km: float = Field(default=5.0, ge=0.0)
+    charging_rate: float = Field(default=1.0, ge=0.1)
     weather_tolerance: str
+    no_fly_compliance: str = "strict"
+    emergency_priority_capability: bool = False
+    energy_consumption_rate: float = Field(default=1.0, ge=0.1)
+    failure_probability_modifier: float = Field(default=1.0, ge=0.0)
+    cost_per_km: float = Field(default=1.0, ge=0.0)
     can_deliver: bool
+    delivery_capable: bool = True
     communication_role: str
+    best_use_case: str = "general delivery"
+
+
+class DeploymentProfile(BaseModel):
+    profile_id: str
+    base_archetype: DroneType
+    max_speed: int = Field(ge=1)
+    payload_capacity: int = Field(ge=0)
+    battery_capacity: int = Field(ge=1)
+    nominal_range_km: float = Field(ge=0.0)
+    charging_rate: float = Field(ge=0.1)
+    weather_tolerance: str
+    no_fly_compliance: str = "strict"
+    emergency_priority_capability: bool = False
+    energy_consumption_rate: float = Field(ge=0.1)
+    failure_probability_modifier: float = Field(ge=0.0)
+    cost_per_km: float = Field(ge=0.0)
+    delivery_capable: bool = True
+    best_use_case: str
 
 
 class FleetProfilesConfig(BaseModel):
     profiles: dict[DroneType, FleetProfile]
+    deployment_profiles: dict[str, DeploymentProfile] = Field(default_factory=dict)
 
 
 class RewardWeightsConfig(BaseModel):

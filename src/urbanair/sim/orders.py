@@ -44,8 +44,9 @@ def tick_order_deadlines(orders: list[OrderState], resolved_order_ids: set[str])
     for order in orders:
         if order.order_id in resolved_order_ids:
             continue
+        previous_deadline = order.deadline
         order.deadline = max(0, order.deadline - 1)
-        if order.deadline == 0:
+        if previous_deadline > 0 and order.deadline == 0:
             events.append(f"{order.order_id} reached its delivery deadline.")
     return events
 

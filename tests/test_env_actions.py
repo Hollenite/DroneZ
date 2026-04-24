@@ -74,6 +74,20 @@ def test_delay_order_marks_order_for_recovery() -> None:
     assert order["order_id"] in info["pending_recovery_orders"]
 
 
+def test_prioritize_order_does_not_revive_missed_deadline() -> None:
+    env = DroneZEnvironment()
+    observation, _ = env.reset("easy")
+
+    order = next(item for item in env.state.orders if item.order_id not in env.state.resolved_order_ids)
+    order.deadline = 0
+
+    next_observation, _, _, info = env.step({"action": "prioritize_order", "params": {"order_id": order.order_id}})
+
+    prioritized = next(item for item in next_observation["orders"] if item["order_id"] == order.order_id)
+    assert prioritized["deadline"] == 0
+    assert info["invalid_action"] is False
+
+
 def test_hold_and_resume_fleet_toggle_zone_state() -> None:
     env = DroneZEnvironment()
     observation, _ = env.reset("easy")
@@ -113,7 +127,7 @@ def test_reroute_updates_visible_corridor_and_path() -> None:
     assert routed["flight_path"][1] == "safe"
     assert info["invalid_action"] is False
     assert info["reward_breakdown"]["negative"].get("unnecessary_reroute") is None
-    assert info["reward_breakdown"]["positive"]["regulatory_compliance"] > 0
+    assert info["reward_breakdown"]["positive"]["safe_reroute"] > 0
     assert reward > 0
 
 
