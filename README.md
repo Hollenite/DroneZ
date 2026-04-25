@@ -437,6 +437,7 @@ OpenEnv / HF Space:
 - tech stack guide: `TECH_STACK_EXPLAINED.md`
 - product architecture: `DRONE_RL_PRODUCT_ARCHITECTURE.md`
 - training results explained: `TRAINING_RESULTS_EXPLAINED.md`
+- final readiness audit: `FINAL_READINESS_REPORT.md`
 - official OpenEnv docs: [OpenEnv](https://meta-pytorch.org/OpenEnv/index.html)
 - install docs: [Installation](https://meta-pytorch.org/OpenEnv/installation.html)
 - official repo: [meta-pytorch/OpenEnv](https://github.com/meta-pytorch/OpenEnv)

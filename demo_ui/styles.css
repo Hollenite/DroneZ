@@ -82,6 +82,7 @@ select {
 .panel,
 .config-card,
 .story-card {
+  min-width: 0;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
@@ -136,6 +137,7 @@ h1 {
   font-size: clamp(2.7rem, 6vw, 6.2rem);
   line-height: 0.88;
   letter-spacing: -0.075em;
+  text-wrap: balance;
 }
 
 .subhead {
@@ -203,7 +205,7 @@ button:first-child {
 .result-grid,
 .delta-grid {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 12px 16px;
   color: var(--muted);
 }
@@ -211,6 +213,8 @@ button:first-child {
 .result-grid b,
 .delta-grid b {
   color: var(--text);
+  text-align: right;
+  white-space: nowrap;
 }
 
 .controls-card {
@@ -1169,11 +1173,64 @@ input[type="range"] {
     grid-template-columns: 1fr;
   }
 
+  h1,
+  .stage-mode h1 {
+    font-size: clamp(2.05rem, 12vw, 3.25rem);
+    line-height: 0.96;
+    letter-spacing: -0.052em;
+  }
+
+  .subhead {
+    font-size: 0.98rem;
+  }
+
   .hero-copy {
-    min-height: 360px;
+    min-height: 340px;
+    padding: 24px;
+  }
+
+  .hero-actions {
+    gap: 8px;
+  }
+
+  .hero-actions .cta {
+    flex: 1 1 100%;
+    text-align: center;
+  }
+
+  .result-card {
+    padding: 20px;
+  }
+
+  .result-card strong {
+    font-size: 1.45rem;
+  }
+
+  .result-grid,
+  .delta-grid {
+    gap: 10px;
+    font-size: 0.92rem;
+  }
+
+  .controls-card {
+    padding: 12px;
+  }
+
+  .button-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .map-topline {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .mission-strip {
+    font-size: 0.76rem;
   }
 
   #mapSvg {
-    min-height: 460px;
+    min-height: 430px;
+    border-radius: 18px;
   }
 }
