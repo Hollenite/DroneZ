@@ -174,11 +174,13 @@ label {
 }
 
 select,
-input[type="range"] {
+input[type="range"],
+.config-grid input {
   width: 100%;
 }
 
-select {
+select,
+.config-grid input {
   min-height: 42px;
   border-radius: 14px;
   border: 1px solid var(--line);
@@ -186,6 +188,104 @@ select {
   background: #fffdf6;
   color: var(--ink);
   font-weight: 700;
+}
+
+.enterprise-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(320px, 0.7fr);
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.config-card,
+.story-card {
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 28px;
+  background: linear-gradient(145deg, rgba(255, 252, 242, 0.94), rgba(223, 243, 231, 0.86));
+  box-shadow: var(--shadow);
+  padding: 22px;
+}
+
+.section-kicker {
+  width: fit-content;
+  margin-bottom: 10px;
+  border-radius: 999px;
+  padding: 7px 10px;
+  background: rgba(36, 92, 141, 0.1);
+  color: var(--blue);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+}
+
+.config-card h2,
+.story-card h2 {
+  margin: 0 0 14px;
+  font-size: 1.4rem;
+  letter-spacing: -0.03em;
+}
+
+.config-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.sensor-stack,
+.status-pills,
+.loop-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.sensor-stack span,
+.status-pills span,
+.loop-row span {
+  border-radius: 999px;
+  padding: 8px 10px;
+  background: rgba(16, 32, 24, 0.08);
+  color: var(--ink);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.status-pills .pass { background: #dff3e7; color: var(--green); }
+.status-pills .warn { background: #fff1d6; color: #9c650f; }
+.status-pills .next { background: #e6edff; color: var(--blue); }
+
+.objective-card {
+  background: linear-gradient(145deg, rgba(15, 38, 31, 0.94), rgba(24, 78, 64, 0.88));
+  color: #f8fbf4;
+}
+
+.objective-card .section-kicker {
+  background: rgba(141, 229, 184, 0.16);
+  color: #8de5b8;
+}
+
+.objective-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px 14px;
+  margin: 13px 0;
+  align-items: center;
+}
+
+.objective-row span {
+  color: rgba(248, 251, 244, 0.78);
+  font-weight: 800;
+}
+
+.objective-row i {
+  grid-column: 1 / -1;
+  display: block;
+  height: 8px;
+  border-radius: 999px;
+  background:
+    linear-gradient(90deg, #8de5b8 var(--w), rgba(255, 255, 255, 0.16) var(--w));
 }
 
 .button-row {
@@ -266,6 +366,7 @@ select {
   width: 100%;
   min-height: 620px;
   border-radius: 22px;
+  filter: drop-shadow(0 24px 46px rgba(2, 12, 8, 0.2));
   background:
     linear-gradient(120deg, rgba(229, 240, 227, 0.9), rgba(255, 252, 242, 0.88)),
     repeating-linear-gradient(90deg, rgba(16, 32, 24, 0.04), rgba(16, 32, 24, 0.04) 1px, transparent 1px, transparent 54px),
@@ -302,7 +403,12 @@ select {
 .order.delivered { opacity: 0.35; }
 .order text { font-size: 10px; font-weight: 900; fill: var(--ink); }
 
-.drone circle { stroke: #fffdf6; stroke-width: 4; filter: url(#softShadow); }
+.drone circle {
+  stroke: #fffdf6;
+  stroke-width: 4;
+  filter: url(#softShadow) drop-shadow(0 0 14px rgba(141, 229, 184, 0.7));
+  animation: dronePulse 1.9s ease-in-out infinite;
+}
 .drone.ok circle { fill: var(--green); }
 .drone.warning circle { fill: var(--amber); }
 .drone.critical circle { fill: var(--red); }
@@ -449,10 +555,35 @@ select {
   outline: 3px solid rgba(200, 76, 63, 0.35);
 }
 
+@keyframes dronePulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+.story-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 20px;
+  margin-bottom: 30px;
+}
+
+.story-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
 @media (max-width: 1120px) {
   .hero,
   .layout,
-  .controls-card {
+  .controls-card,
+  .enterprise-grid,
+  .story-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .config-grid {
     grid-template-columns: 1fr;
   }
 
@@ -478,7 +609,9 @@ select {
   .result-card,
   .controls-card,
   .viewport-card,
-  .panel {
+  .panel,
+  .config-card,
+  .story-card {
     border-radius: 20px;
   }
 

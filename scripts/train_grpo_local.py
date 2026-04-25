@@ -18,11 +18,12 @@ for candidate in (SCRIPT_DIR, SRC):
     if str(candidate) not in sys.path:
         sys.path.insert(0, str(candidate))
 
-from train_grpo import build_prompt, dependency_status, parse_action_text, write_json
+from train_grpo import dependency_status, write_json
 from urbanair.env.environment import DroneZEnvironment
 from urbanair.eval.benchmark import benchmark_task_sweep
 from urbanair.policies.base import Policy
 from urbanair.policies.baseline import ImprovedPolicy
+from urbanair.training.action_format import build_action_prompt, build_candidate_actions, parse_llm_action
 
 TRAINING_DIR = ROOT / "artifacts" / "training"
 DEFAULT_MODEL = "Qwen/Qwen2.5-0.5B-Instruct"
@@ -104,6 +105,13 @@ class LocalGRPOTrainer:
             "training_log": self.training_log,
             "loss_history": self.loss_history,
             "reward_history": self.reward_history,
+            "valid_json_rate": _training_rate(self.training_log, "valid_json"),
+            "valid_action_rate": _training_rate(self.training_log, "valid_action_shape"),
+            "invalid_action_count": sum(int(item.get("invalid_action_count", 0)) for item in self.training_log),
+            "completed_deliveries": _aggregate_metric(eval_after, "completed_deliveries"),
+            "urgent_successes": _aggregate_metric(eval_after, "urgent_successes"),
+            "safety_violations": _aggregate_metric(eval_after, "safety_violations"),
+            "warnings": _training_warnings(self.reward_history, self.training_log),
             "baseline_reference": baseline_reference,
             "pre_training_mean_reward": _aggregate_mean_reward(eval_before),
             "post_training_mean_reward": _aggregate_mean_reward(eval_after),
@@ -160,9 +168,10 @@ class LocalGRPOTrainer:
         return destination
 
     def choose_action(self, observation: dict[str, Any], *, do_sample: bool) -> dict[str, Any]:
-        prompt = build_prompt(observation)
+        candidate_actions = build_candidate_actions(observation)
+        prompt = build_action_prompt(observation, candidate_choice=self.args.candidate_choice)
         text, _, _ = self._generate_completion(prompt, do_sample=do_sample)
-        return safe_parse_action(text)
+        return safe_parse_action(text, observation=observation, candidate_actions=candidate_actions)
 
     def _run_training_episode(self, task_id: str, episode_number: int) -> dict[str, Any]:
         env = DroneZEnvironment(default_task_id=task_id, max_episode_actions=self.args.max_actions)
@@ -173,18 +182,30 @@ class LocalGRPOTrainer:
         update_steps = 0
         invalid_action_count = 0
         done = False
+        no_learning_signal = False
+        candidates: list[dict[str, Any]] = []
 
         while not done:
-            prompt = build_prompt(observation)
+            candidate_actions = build_candidate_actions(observation)
+            prompt = build_action_prompt(observation, candidate_choice=self.args.candidate_choice)
             candidates = []
             for _ in range(self.args.group_size):
                 raw_text, prompt_ids, completion_ids = self._generate_completion(prompt, do_sample=True)
-                action = safe_parse_action(raw_text)
+                parse_result = parse_llm_action(raw_text, observation=observation, candidate_actions=candidate_actions)
+                action = parse_result.action
                 estimate = self._evaluate_candidate(env, action)
                 candidates.append(
                     {
                         "raw_text": raw_text,
                         "action": action,
+                        "parse": {
+                            "valid_json": parse_result.valid_json,
+                            "valid_action_shape": parse_result.valid_action_shape,
+                            "repaired": parse_result.repaired,
+                            "used_candidate_choice": parse_result.used_candidate_choice,
+                            "error_code": parse_result.error_code,
+                            "notes": parse_result.notes,
+                        },
                         "prompt_ids": prompt_ids,
                         "completion_ids": completion_ids,
                         **estimate,
@@ -200,6 +221,7 @@ class LocalGRPOTrainer:
                 advantages = (rewards - rewards.mean()) / (rewards.std(unbiased=False) + 1e-6)
             else:
                 advantages = self._torch.zeros_like(rewards)
+            no_learning_signal = bool(rewards.numel() > 1 and float(rewards.std(unbiased=False).detach().cpu()) < 1e-6)
 
             self.optimizer.zero_grad(set_to_none=True)
             losses = []
@@ -221,6 +243,18 @@ class LocalGRPOTrainer:
             self.loss_history.append(round(loss_value, 6))
 
         self.reward_history.append(round(episode_return, 4))
+        current_samples = [
+            {
+                "valid_json": candidate["parse"]["valid_json"],
+                "valid_action_shape": candidate["parse"]["valid_action_shape"],
+                "repaired": candidate["parse"]["repaired"],
+                "used_candidate_choice": candidate["parse"]["used_candidate_choice"],
+                "error_code": candidate["parse"]["error_code"],
+                "invalid_action": candidate["invalid_action"],
+                "estimated_total_return": round(float(candidate["estimated_total_return"]), 4),
+            }
+            for candidate in candidates
+        ][: self.args.group_size]
         return {
             "episode": episode_number,
             "task_id": task_id,
@@ -231,6 +265,107 @@ class LocalGRPOTrainer:
             "done_reason": info.get("done_reason", "unknown"),
             "terminated_by": info.get("terminated_by", "unknown"),
             "final_cumulative_reward": info.get("cumulative_reward", {}),
+            "candidate_choice": self.args.candidate_choice,
+            "no_learning_signal_warning": no_learning_signal,
+            "sample_parse_results": current_samples,
+            "valid_json_rate": _rate(sample["valid_json"] for sample in current_samples),
+            "valid_action_rate": _rate(sample["valid_action_shape"] for sample in current_samples),
+        }
+
+    def write_format_check(self) -> Path:
+        rows: list[dict[str, Any]] = []
+        for task_id in self.tasks:
+            env = DroneZEnvironment(default_task_id=task_id, max_episode_actions=self.args.max_actions)
+            observation, _ = env.reset(task_id)
+            candidate_actions = build_candidate_actions(observation)
+            examples = _format_check_examples(candidate_actions)
+            for label, text in examples:
+                result = parse_llm_action(text, observation=observation, candidate_actions=candidate_actions)
+                rows.append(
+                    {
+                        "task_id": task_id,
+                        "label": label,
+                        "raw_text": text,
+                        "parsed_action": result.action,
+                        "valid_json": result.valid_json,
+                        "valid_action_shape": result.valid_action_shape,
+                        "repaired": result.repaired,
+                        "used_candidate_choice": result.used_candidate_choice,
+                        "error_code": result.error_code,
+                        "notes": result.notes,
+                    }
+                )
+
+        model_sampling = {
+            "executed": False,
+            "reason": "Pass --sample-model-actions on a CUDA machine to sample the selected model without training.",
+            "samples": [],
+        }
+        if self.args.sample_model_actions:
+            try:
+                self._validate_training_environment()
+                self._seed_everything()
+                self._load_model()
+                model_sampling = self._sample_model_actions_for_format_check()
+            except RuntimeError as exc:
+                model_sampling = {"executed": False, "reason": str(exc), "samples": []}
+
+        valid_json_rate = _rate(row["valid_json"] for row in rows)
+        valid_action_rate = _rate(row["valid_action_shape"] for row in rows)
+        invalid_reasons: dict[str, int] = {}
+        for row in rows:
+            reason = row["error_code"] or "valid"
+            invalid_reasons[reason] = invalid_reasons.get(reason, 0) + 1
+        payload = {
+            "mode": "format-check",
+            "training_executed": False,
+            "note": (
+                "Validates DroneZ action JSON extraction, repair, and candidate-choice scaffolding. "
+                "This is not a model improvement claim."
+            ),
+            "selected_model": self.args.model,
+            "curriculum": self.tasks,
+            "candidate_choice_supported": True,
+            "valid_json_rate": valid_json_rate,
+            "valid_action_rate": valid_action_rate,
+            "top_invalid_reasons": dict(sorted(invalid_reasons.items(), key=lambda item: (-item[1], item[0]))),
+            "model_sampling": model_sampling,
+            "rows": rows,
+        }
+        return write_json(self.output_dir / "format_check.json", payload)
+
+    def _sample_model_actions_for_format_check(self) -> dict[str, Any]:
+        self.model.eval()
+        samples = []
+        try:
+            for task_id in self.tasks[:2]:
+                env = DroneZEnvironment(default_task_id=task_id, max_episode_actions=self.args.max_actions)
+                observation, _ = env.reset(task_id)
+                candidate_actions = build_candidate_actions(observation)
+                prompt = build_action_prompt(observation, candidate_choice=self.args.candidate_choice)
+                raw_text, _, _ = self._generate_completion(prompt, do_sample=False)
+                result = parse_llm_action(raw_text, observation=observation, candidate_actions=candidate_actions)
+                samples.append(
+                    {
+                        "task_id": task_id,
+                        "raw_text": raw_text,
+                        "parsed_action": result.action,
+                        "valid_json": result.valid_json,
+                        "valid_action_shape": result.valid_action_shape,
+                        "repaired": result.repaired,
+                        "used_candidate_choice": result.used_candidate_choice,
+                        "error_code": result.error_code,
+                        "notes": result.notes,
+                    }
+                )
+        finally:
+            self.model.train()
+        return {
+            "executed": True,
+            "reason": "Sampled selected model without optimizer updates.",
+            "samples": samples,
+            "valid_json_rate": _rate(sample["valid_json"] for sample in samples),
+            "valid_action_rate": _rate(sample["valid_action_shape"] for sample in samples),
         }
 
     def _evaluate_candidate(self, base_env: DroneZEnvironment, action: dict[str, Any]) -> dict[str, Any]:
@@ -416,6 +551,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-actions", type=int, default=None)
     parser.add_argument("--save-model-dir", default="")
     parser.add_argument("--sanity-check", action="store_true", help="Validate dependencies/GPU reporting without running training.")
+    parser.add_argument("--format-check", action="store_true", help="Validate action JSON parsing, repair, and candidate-choice scaffolding.")
+    parser.add_argument("--candidate-choice", action="store_true", help="Ask the model to choose among generated valid candidate actions during training.")
+    parser.add_argument("--sample-model-actions", action="store_true", help="During --format-check, sample the selected model if CUDA/dependencies are available.")
+    parser.add_argument("--warmstart-data", action="store_true", help="Generate ImprovedPolicy SFT action-format data before GRPO.")
+    parser.add_argument("--warmstart-output", default="", help="Optional path for --warmstart-data JSONL output.")
+    parser.add_argument("--real-train", action="store_true", help="Explicit marker for the actual online local training path.")
     return parser
 
 
@@ -426,17 +567,13 @@ def extended_dependency_status() -> dict[str, bool]:
     return status
 
 
-def safe_parse_action(text: str) -> dict[str, Any]:
-    try:
-        candidate = parse_action_text(text)
-    except Exception:
-        return {"action": "__invalid__", "params": {}}
-    if not isinstance(candidate, dict):
-        return {"action": "__invalid__", "params": {}}
-    params = candidate.get("params")
-    if not isinstance(params, dict):
-        params = {}
-    return {"action": candidate.get("action", "__invalid__"), "params": params}
+def safe_parse_action(
+    text: str,
+    *,
+    observation: dict[str, Any] | None = None,
+    candidate_actions: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    return parse_llm_action(text, observation=observation, candidate_actions=candidate_actions).action
 
 
 def serialize_benchmark(payload: dict[str, Any]) -> dict[str, Any]:
@@ -459,6 +596,54 @@ def _aggregate_mean_reward(payload: dict[str, Any]) -> float:
     return float(first_value.get("mean_total_reward", 0.0))
 
 
+def _aggregate_metric(payload: dict[str, Any], metric: str) -> float:
+    aggregate = payload.get("aggregate", {})
+    if not aggregate:
+        return 0.0
+    first_value = next(iter(aggregate.values()))
+    return float(first_value.get(metric, 0.0))
+
+
+def _training_rate(training_log: list[dict[str, Any]], key: str) -> float:
+    values = [
+        bool(sample.get(key))
+        for episode in training_log
+        for sample in episode.get("sample_parse_results", [])
+    ]
+    return _rate(values)
+
+
+def _training_warnings(reward_history: list[float], training_log: list[dict[str, Any]]) -> list[str]:
+    warnings = []
+    if reward_history and len(set(reward_history)) <= 1:
+        warnings.append("No learning signal: all rollout rewards identical.")
+    if any(item.get("done_reason") == "invalid_action_cap_reached" for item in training_log):
+        warnings.append("At least one training episode hit invalid_action_cap_reached.")
+    if any(item.get("no_learning_signal_warning") for item in training_log):
+        warnings.append("At least one GRPO group had identical candidate returns; use --candidate-choice or warm-start data.")
+    return warnings
+
+
+def _format_check_examples(candidate_actions: list[dict[str, Any]]) -> list[tuple[str, str]]:
+    first = candidate_actions[0] if candidate_actions else {"action": "prioritize_order", "params": {"order_id": "O1"}}
+    action_name = first["action"]
+    return [
+        ("plain_json", json.dumps(first)),
+        ("markdown_fence", f"```json\n{json.dumps(first)}\n```"),
+        ("single_quotes", str(first)),
+        ("action_name_alias", json.dumps({"action_name": action_name, "params": first["params"]})),
+        ("nested_action", json.dumps({"action": first})),
+        ("candidate_choice", json.dumps({"choice": 1})),
+        ("extra_text", f"I would do this now: {json.dumps(first)} because it is safe."),
+        ("invalid_free_text", "send the nearest drone immediately"),
+    ]
+
+
+def _rate(values) -> float:
+    items = list(values)
+    return round(sum(1 for item in items if item) / len(items), 4) if items else 0.0
+
+
 def _parse_csv_list(raw: str, *, fallback: list[str]) -> list[str]:
     items = [item.strip() for item in raw.split(",") if item.strip()]
     return items or fallback
@@ -474,6 +659,21 @@ def main(argv: list[str] | None = None) -> int:
             destination = trainer.write_sanity_check()
             print(f"Wrote {destination}")
             print(destination.read_text())
+            return 0
+
+        if args.format_check:
+            destination = trainer.write_format_check()
+            print(f"Wrote {destination}")
+            print(destination.read_text())
+            return 0
+
+        if args.warmstart_data:
+            from generate_sft_action_data import generate_examples, write_jsonl
+
+            destination = Path(args.warmstart_output) if args.warmstart_output else Path(args.output_dir) / "sft_action_data.jsonl"
+            rows = generate_examples(trainer.tasks, max_actions=args.max_actions)
+            write_jsonl(destination, rows)
+            print(json.dumps({"output": str(destination), "examples": len(rows), "tasks": trainer.tasks}, indent=2))
             return 0
 
         result_paths = trainer.run()

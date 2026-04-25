@@ -15,6 +15,7 @@ if str(SRC) not in sys.path:
 from urbanair.env.environment import DroneZEnvironment
 from urbanair.eval.benchmark import benchmark_task_sweep, run_episode
 from urbanair.policies.baseline import HeuristicPolicy, ImprovedPolicy, RandomPolicy
+from urbanair.training.action_format import build_action_prompt, parse_llm_action
 
 RESULTS_DIR = ROOT / "artifacts" / "results"
 TRAINING_DIR = ROOT / "artifacts" / "training"
@@ -22,23 +23,14 @@ PLOTS_DIR = ROOT / "artifacts" / "plots"
 
 
 def build_prompt(observation: dict[str, Any]) -> str:
-    return (
-        "You are the DroneZ fleet operations controller.\n"
-        "Return exactly one JSON action with keys `action` and `params`.\n"
-        "Use only supported actions from `action_reminder`.\n\n"
-        f"{observation['summary']}\n\n"
-        f"SUPPORTED_ACTIONS: {', '.join(observation['action_reminder'])}\n"
-        "RESPONSE_FORMAT:\n"
-        '{"action": "assign_delivery", "params": {"drone_id": "FA-1", "order_id": "O1"}}'
-    )
+    return build_action_prompt(observation, candidate_choice=False)
 
 
 def parse_action_text(text: str) -> dict[str, Any]:
-    candidate = text.strip()
-    if "```" in candidate:
-        parts = [part.strip() for part in candidate.split("```") if part.strip()]
-        candidate = next((part for part in parts if part.startswith("{")), candidate)
-    return json.loads(candidate)
+    result = parse_llm_action(text)
+    if not result.valid_action_shape:
+        raise ValueError(result.error_code or "invalid_action")
+    return result.action
 
 
 def dependency_status() -> dict[str, bool]:

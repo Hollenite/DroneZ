@@ -1,0 +1,63 @@
+{
+  "mode": "action-format-sft-template",
+  "training_executed": false,
+  "note": "Dry-run/template for teaching DroneZ JSON action format before GRPO. Run with --real-train on a GPU machine after installing train dependencies.",
+  "model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "data": "artifacts/training/sft_action_data.jsonl",
+  "example_count": 108,
+  "dependency_status": {
+    "torch": true,
+    "transformers": true,
+    "trl": true,
+    "peft": true,
+    "datasets": true,
+    "unsloth": false
+  },
+  "recommended_next_step": "Run this SFT warm start first, then run train_grpo_local.py --candidate-choice --real-train.",
+  "output_dir": "artifacts/training/action_format_sft",
+  "sample": {
+    "action_json": {
+      "action": "assign_delivery",
+      "params": {
+        "drone_id": "FA-1",
+        "order_id": "O1"
+      }
+    },
+    "candidate_actions": [
+      {
+        "action": "assign_delivery",
+        "params": {
+          "drone_id": "FA-1",
+          "order_id": "O1"
+        }
+      },
+      {
+        "action": "assign_delivery",
+        "params": {
+          "drone_id": "HE-1",
+          "order_id": "O1"
+        }
+      },
+      {
+        "action": "assign_delivery",
+        "params": {
+          "drone_id": "LO-1",
+          "order_id": "O1"
+        }
+      },
+      {
+        "action": "prioritize_order",
+        "params": {
+          "order_id": "O1"
+        }
+      }
+    ],
+    "completion": "{\"action\": \"assign_delivery\", \"params\": {\"drone_id\": \"FA-1\", \"order_id\": \"O1\"}}",
+    "done_after_action": false,
+    "observation_summary": "TASK=easy STEP=0/20 PENDING=4\nFLEET:\nFA-1|type=fast_light|status=idle|battery=95|zone=hub|assigned=None|eta=None|target=None|corridor=None\nHE-1|type=heavy_carrier|status=idle|battery=91|zone=hub|assigned=None|eta=None|target=None|corridor=None\nLO-1|type=long_range_sensitive|status=idle|battery=78|zone=hub|assigned=None|eta=None|target=None|corridor=None\nORDERS:\nO1|priority=urgent|status=queued|zone=Z1|deadline=6|recipient=available|assigned=None|weight=2\nO3|priority=normal|status=queued|zone=Z3|deadline=5|recipient=available|assigned=None|weight=1\nO4|priority=normal|status=queued|zone=Z4|deadline=5|recipient=available|assigned=None|weight=1\nO2|priority=normal|status=queued|zone=Z2|deadline=6|recipient=available|assigned=None|weight=1\nHAZARDS:\nhub:clear\nCHARGERS:\nC_FIELD|occupied=1/2|queue=1\nC_HUB|occupied=1/3|queue=0",
+    "prompt": "You are DroneZ, an LLM mission-level drone fleet controller.\nReturn JSON only. Prefer a numbered candidate: {\"choice\": 1}. You may also return a full action JSON if necessary.\nDo not explain. Do not use markdown. Do not invent IDs.\n\nCOMPACT_OBSERVATION:\nTASK=easy STEP=0/20 PENDING=4\nFLEET:\nFA-1|type=fast_light|status=idle|battery=95|zone=hub|assigned=None|eta=None|target=None|corridor=None\nHE-1|type=heavy_carrier|status=idle|battery=91|zone=hub|assigned=None|eta=None|target=None|corridor=None\nLO-1|type=long_range_sensitive|status=idle|battery=78|zone=hub|assigned=None|eta=None|target=None|corridor=None\nORDERS:\nO1|priority=urgent|status=queued|zone=Z1|deadline=6|recipient=available|assigned=None|weight=2\nO3|priority=normal|status=queued|zone=Z3|deadline=5|recipient=available|assigned=None|weight=1\nO4|priority=normal|status=queued|zone=Z4|deadline=5|recipient=available|assigned=None|weight=1\nO2|priority=normal|status=queued|zone=Z2|deadline=6|recipient=available|assigned=None|weight=1\nHAZARDS:\nhub:clear\nCHARGERS:\nC_FIELD|occupied=1/2|queue=1\nC_HUB|occupied=1/3|queue=0\n\nACTION_SCHEMA:\n- assign_delivery: params=['drone_id', 'order_id']\n- reroute: params=['drone_id', 'corridor']\n- return_to_charge: params=['drone_id', 'station_id']\n- reserve_charger: params=['drone_id', 'station_id']\n- delay_order: params=['order_id']\n- prioritize_order: params=['order_id']\n- swap_assignments: params=['drone_a', 'drone_b']\n- attempt_delivery: params=['drone_id', 'mode']\n- fallback_to_locker: params=['order_id', 'locker_id']\n- hold_fleet: params=['zone_id']\n- resume_operations: params=['zone_id']\n\nVALID_CANDIDATES:\n1. {\"action\": \"assign_delivery\", \"params\": {\"drone_id\": \"FA-1\", \"order_id\": \"O1\"}}\n2. {\"action\": \"assign_delivery\", \"params\": {\"drone_id\": \"HE-1\", \"order_id\": \"O1\"}}\n3. {\"action\": \"assign_delivery\", \"params\": {\"drone_id\": \"LO-1\", \"order_id\": \"O1\"}}\n4. {\"action\": \"prioritize_order\", \"params\": {\"order_id\": \"O1\"}}",
+    "reward_after_action": 2.0,
+    "step": 0,
+    "task_id": "easy"
+  }
+}

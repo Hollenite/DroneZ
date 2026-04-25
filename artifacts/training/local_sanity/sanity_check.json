@@ -15,12 +15,12 @@
     "hard"
   ],
   "dependency_status": {
-    "datasets": false,
-    "transformers": false,
-    "trl": false,
-    "accelerate": false,
+    "datasets": true,
+    "transformers": true,
+    "trl": true,
+    "accelerate": true,
     "torch": true,
-    "peft": false
+    "peft": true
   },
   "device": {
     "gpu_available": false,

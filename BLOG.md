@@ -6,6 +6,8 @@ Drone delivery is not just a pathfinding problem. Real delivery operations invol
 
 DroneZ turns that operational layer into an OpenEnv-style reinforcement learning environment.
 
+Product-wise, DroneZ is meant to feel like an enterprise simulation platform: organizations can adapt drone profiles, payload assumptions, weather tolerance, charging constraints, and safety objectives before training a mission-level controller.
+
 ## Why Fleet Control Is Hard
 
 A mission controller must make tradeoffs over time. Sending the fastest drone may drain battery. Completing one normal order may delay a medical order. Flying through a risky sector may complete delivery faster, but creates regulatory and safety cost. These are exactly the kinds of sequential decisions that static prompt-response evaluation does not capture well.
@@ -73,15 +75,25 @@ The improved policy does not claim to be a trained LLM. It is a deterministic re
 
 ## Current Honest Training Status
 
-The repository includes smoke and dry-run training paths, plus a Colab notebook/script path for TRL/GRPO. Real GRPO/Unsloth training has not yet been run in this repo.
+A real local GRPO-style run was attempted on an NVIDIA RTX 5060 Laptop GPU with `Qwen/Qwen2.5-0.5B-Instruct`, but it did not improve. The run exposed the exact bottleneck we now need to solve: the model generated invalid DroneZ actions, every episode ended with `invalid_action_cap_reached`, reward stayed flat, and loss stayed at `0.0`.
 
 Current claim:
 
-`Deterministic improved policy beats baselines. GRPO/Unsloth training pipeline is prepared and dry-run validated.`
+`Deterministic improved policy beats baselines. Real training was attempted and revealed an action-format learning bottleneck. The training pipeline now includes action repair, candidate-choice prompts, and SFT warm-start data generation.`
 
 Future claim after real training:
 
 `A trained model improves over its pre-training baseline`, only if real `eval_before`, `eval_after`, and training plots are produced.
+
+## Why The First Training Attempt Failed
+
+The original training prompt asked a small model to emit arbitrary nested JSON from a long operational summary. When every sampled rollout produced invalid actions, all rewards collapsed to the same value. GRPO-style group normalization then had no useful advantage signal, so the loss stayed flat. The fix is to teach format before strategy:
+
+- compact observations instead of giant summaries
+- robust JSON extraction and repair
+- generated valid candidate actions
+- early candidate-choice mode such as `{"choice": 2}`
+- SFT data from improved-policy traces before online RL
 
 ## Demo Replay UI
 
@@ -112,8 +124,12 @@ DroneZ is prepared for Docker-based Hugging Face Spaces:
 
 ## Future Work
 
-- run real GRPO/Unsloth training on Colab or hackathon compute
+- run action-format SFT, then candidate-choice GRPO on Colab or hackathon compute
 - add trained-model before/after metrics
 - wire deployment profiles into scenario-specific fleet composition
 - add more generated scenarios and curriculum stages
 - expand the replay UI into side-by-side baseline vs improved playback
+
+## Sim-To-Real Boundary
+
+DroneZ does not train real physical drones directly. It trains and evaluates an LLM-style mission controller in a simulated logistics environment. A real aircraft stack would still require low-level flight controllers, PID control, GPS/IMU sensor fusion, Kalman filtering, certified geofencing, aviation-grade safety systems, and extensive sim-to-real validation.

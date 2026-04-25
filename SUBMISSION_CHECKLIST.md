@@ -10,6 +10,8 @@
 | Smoke training | `python scripts/train_grpo.py --mode smoke` | Writes `artifacts/results/training_smoke_metrics.json` | `PASS` |
 | Dry-run training prep | `python scripts/train_grpo.py --mode dry-run` | Writes `artifacts/training/*.json` without claiming training happened | `PASS` |
 | Colab entrypoint prep | `python scripts/train_grpo_colab.py --dry-run --model Qwen/Qwen2.5-0.5B-Instruct --tasks easy,medium,demo --output-dir artifacts/training` | Writes dry-run training artifacts through the Colab entrypoint | `PASS` |
+| Action-format check | `python scripts/train_grpo_local.py --format-check --model Qwen/Qwen2.5-0.5B-Instruct --tasks easy,demo --output-dir artifacts/training/format_check` | Reports valid JSON/action rates without claiming model improvement | `PASS` |
+| SFT warm-start data | `python scripts/generate_sft_action_data.py --tasks easy,medium,demo,hard --output artifacts/training/sft_action_data.jsonl` | Writes valid ImprovedPolicy observation-action examples | `PASS` |
 | OpenEnv validation | `openenv validate` | Ready for multi-mode deployment | `PASS` |
 | Local server endpoints | `python -m uvicorn server.app:app --host 127.0.0.1 --port 8000` plus `/health`, `/tasks`, `/reset`, `/state`, `/step` curls | Server binds and serves the OpenEnv-compatible API | `PASS` |
 | Docker build | `docker build -t dronez .` | Docker image builds successfully | `PASS` |
@@ -29,12 +31,12 @@
 
 ## Current Remaining Work
 
-- Real GRPO / TRL / Unsloth training is still `NOT RUN`. Smoke, dry-run, Colab dry-run, and local GPU sanity checks are validated, but no trained-model improvement should be claimed yet.
+- A real local GRPO-style training attempt was run externally but did not improve; it exposed an action-format bottleneck. Smoke, dry-run, Colab dry-run, local GPU sanity, SFT data, and format checks are validated, but no trained-model improvement should be claimed yet.
 - Video and slides links are still `TODO` unless the team publishes them before final submission.
 - Large checkpoints and videos should stay out of the repo; link them externally.
 
 ## Final Human Actions Before Submission
 
-1. Run the real GRPO/TRL job on Colab, Hugging Face Jobs, or hackathon compute if time/credits allow.
+1. Run action-format SFT, then candidate-choice GRPO on Colab, Hugging Face Jobs, or hackathon compute if time/credits allow.
 2. Replace video/slides and public blog links in README once they exist.
 3. Rehearse the live demo flow with `https://krishna2521-dronez-openenv.hf.space`.

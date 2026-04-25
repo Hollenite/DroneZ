@@ -11,14 +11,15 @@
       <header class="hero">
         <div class="hero-copy">
           <p class="eyebrow">DroneZ OpenEnv</p>
-          <h1>Mission-Level Drone Fleet Control</h1>
+          <h1>OpenEnv RL Platform for Autonomous Drone Fleet Operations</h1>
           <p class="subhead">
-            A trace-driven replay of real DroneZ environment rollouts: urgent orders,
-            no-fly zones, weather disruption, battery-aware dispatch, charging, and rewards.
+            A professional, trace-driven training environment for LLM mission controllers:
+            dispatch, reroute, charge, recover, and prioritize drone fleets under real-world constraints.
           </p>
           <div class="hero-actions">
-            <a class="cta primary" href="#simulator">Open Demo</a>
+            <a class="cta primary" href="#simulator">Run Simulation</a>
             <a class="cta" href="/docs">API Docs</a>
+            <a class="cta" href="https://colab.research.google.com/drive/1ge0s9eYcbeE25oEXh6t-wySGh3ZCR9AV">Training Notebook</a>
             <a class="cta" href="/api">Runtime JSON</a>
             <a class="cta" href="https://github.com/Hollenite/DroneZ">GitHub</a>
             <a class="cta" href="https://huggingface.co/spaces/Krishna2521/dronez-openenv">HF Space</a>
@@ -66,6 +67,53 @@
           <button id="resetBtn">Reset</button>
           <button id="prevBtn">Back</button>
           <button id="nextBtn">Next</button>
+        </div>
+      </section>
+
+      <section class="enterprise-grid" aria-label="Organization configurator">
+        <div class="config-card">
+          <div class="section-kicker">Organization Configurator</div>
+          <h2>Adapt the fleet controller to your operating model</h2>
+          <div class="config-grid">
+            <label>Company <input value="AeroMed Logistics" aria-label="Company name" /></label>
+            <label>Use case
+              <select aria-label="Use case">
+                <option>medical priority delivery</option>
+                <option>urban food delivery</option>
+                <option>critical infrastructure inspection</option>
+                <option>campus surveillance</option>
+              </select>
+            </label>
+            <label>Drone profile
+              <select aria-label="Drone profile">
+                <option>medical_priority_drone</option>
+                <option>light_food_delivery_drone</option>
+                <option>heavy_package_drone</option>
+                <option>long_range_rural_drone</option>
+              </select>
+            </label>
+            <label>Payload capacity <input value="2.5 kg" aria-label="Payload capacity" /></label>
+            <label>Battery capacity <input value="high endurance" aria-label="Battery capacity" /></label>
+            <label>Safety strictness
+              <select aria-label="Safety strictness">
+                <option>strict: avoid all unsafe zones</option>
+                <option>balanced: safety with deadline pressure</option>
+              </select>
+            </label>
+          </div>
+          <div class="sensor-stack">
+            <span>GPS</span><span>IMU</span><span>Camera</span><span>LiDAR</span><span>Thermal</span><span>RTK</span>
+          </div>
+        </div>
+
+        <div class="config-card objective-card">
+          <div class="section-kicker">Objective Weights</div>
+          <h2>Enterprise reward priorities</h2>
+          <div class="objective-row"><span>Safety</span><b>40%</b><i style="--w: 92%"></i></div>
+          <div class="objective-row"><span>Urgent delivery</span><b>25%</b><i style="--w: 78%"></i></div>
+          <div class="objective-row"><span>Energy</span><b>15%</b><i style="--w: 58%"></i></div>
+          <div class="objective-row"><span>Speed</span><b>12%</b><i style="--w: 48%"></i></div>
+          <div class="objective-row"><span>Cost</span><b>8%</b><i style="--w: 36%"></i></div>
         </div>
       </section>
 
@@ -122,6 +170,44 @@
           </section>
         </aside>
       </main>
+
+      <section class="story-grid">
+        <article class="story-card">
+          <div class="section-kicker">RL Loop</div>
+          <h2>Observation → Action → Step → Reward → Learn</h2>
+          <p>
+            DroneZ exposes an OpenEnv-style loop where the LLM sees fleet state, order urgency,
+            weather/no-fly constraints, charger queues, and reward feedback. It outputs one mission-level
+            JSON action at a time, then the environment executes and scores the outcome.
+          </p>
+          <div class="loop-row">
+            <span>Observation</span><span>Action JSON</span><span>Environment Step</span><span>Reward</span><span>Training Signal</span>
+          </div>
+        </article>
+        <article class="story-card">
+          <div class="section-kicker">Training Status</div>
+          <h2>Honest model-training boundary</h2>
+          <p>
+            The deterministic improved policy is proven against baselines. A real local GRPO-style run was
+            attempted, but it exposed an action-format bottleneck: the model generated invalid actions and
+            reward stayed flat. The next training path is action-format SFT plus candidate-choice GRPO.
+          </p>
+          <div class="status-pills">
+            <span class="pass">Improved policy proven</span>
+            <span class="warn">GRPO attempted: no improvement yet</span>
+            <span class="next">Next: SFT + candidate choice</span>
+          </div>
+        </article>
+        <article class="story-card">
+          <div class="section-kicker">Enterprise Deployment Story</div>
+          <h2>Simulation first, real-world later</h2>
+          <p>
+            DroneZ is not low-level motor control. It trains and evaluates mission-level fleet decisions.
+            A real deployment would integrate certified flight controllers, PID loops, GPS/IMU fusion,
+            aviation safety rules, and sim-to-real validation before touching physical aircraft.
+          </p>
+        </article>
+      </section>
     </div>
 
     <script type="module" src="./app.js"></script>

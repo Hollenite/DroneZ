@@ -87,8 +87,16 @@ Because it is packaged as an environment with explicit `reset`, `step`, and `sta
 
 ### 4. What evidence shows improvement?
 
-This repo currently shows deterministic improvement: `improved` beats `heuristic`, `random`, and `naive` on the exported benchmark artifacts, while keeping zero invalid actions and zero safety violations in the current sweep. Real GRPO training is prepared separately and should be added only after an actual run.
+This repo currently shows deterministic improvement: `improved` beats `heuristic`, `random`, and `naive` on the exported benchmark artifacts, while keeping zero invalid actions and zero safety violations in the current sweep. A real local GRPO-style run was attempted, but it did not improve because the model produced invalid actions. We are honest about that and now use action-format SFT plus candidate-choice prompts as the next training step.
 
 ### 5. What remains after the hackathon?
 
-The main post-hackathon step is running real GRPO / Unsloth training at larger scale, deploying the environment to a live HF Space, and expanding the configurable fleet profiles into customer-specific operational variants.
+The main post-hackathon step is running the improved training ladder: action-format SFT, candidate-choice GRPO, then longer online RL at larger scale. We also want to expand configurable fleet profiles into customer-specific operational variants.
+
+### 6. Why did the first real training attempt not improve?
+
+It revealed an action-format bottleneck. The model did not reliably emit valid DroneZ JSON actions, so episodes hit `invalid_action_cap_reached`, rewards were identical, and the optimizer had no useful learning signal. That is why we added compact prompts, JSON repair, candidate-choice mode, and SFT action data.
+
+### 7. Is this controlling real drone motors?
+
+No. DroneZ is mission-level fleet control. Real drones still need certified low-level flight stacks: PID control, GPS/IMU fusion, Kalman filtering, geofencing, hardware failsafes, and aviation-grade validation.

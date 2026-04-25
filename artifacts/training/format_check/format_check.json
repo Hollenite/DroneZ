@@ -1,0 +1,326 @@
+{
+  "mode": "format-check",
+  "training_executed": false,
+  "note": "Validates DroneZ action JSON extraction, repair, and candidate-choice scaffolding. This is not a model improvement claim.",
+  "selected_model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "curriculum": [
+    "easy",
+    "demo"
+  ],
+  "candidate_choice_supported": true,
+  "valid_json_rate": 0.875,
+  "valid_action_rate": 0.875,
+  "top_invalid_reasons": {
+    "valid": 14,
+    "no_json_object": 2
+  },
+  "model_sampling": {
+    "executed": false,
+    "reason": "Pass --sample-model-actions on a CUDA machine to sample the selected model without training.",
+    "samples": []
+  },
+  "rows": [
+    {
+      "task_id": "easy",
+      "label": "plain_json",
+      "raw_text": "{\"action\": \"assign_delivery\", \"params\": {\"drone_id\": \"FA-1\", \"order_id\": \"O1\"}}",
+      "parsed_action": {
+        "action": "assign_delivery",
+        "params": {
+          "drone_id": "FA-1",
+          "order_id": "O1"
+        }
+      },
+      "valid_json": true,
+      "valid_action_shape": true,
+      "repaired": false,
+      "used_candidate_choice": false,
+      "error_code": null,
+      "notes": []
+    },
+    {
+      "task_id": "easy",
+      "label": "markdown_fence",
+      "raw_text": "```json\n{\"action\": \"assign_delivery\", \"params\": {\"drone_id\": \"FA-1\", \"order_id\": \"O1\"}}\n```",
+      "parsed_action": {
+        "action": "assign_delivery",
+        "params": {
+          "drone_id": "FA-1",
+          "order_id": "O1"
+        }
+      },
+      "valid_json": true,
+      "valid_action_shape": true,
+      "repaired": false,
+      "used_candidate_choice": false,
+      "error_code": null,
+      "notes": [
+        "stripped_markdown_fence"
+      ]
+    },
+    {
+      "task_id": "easy",
+      "label": "single_quotes",
+      "raw_text": "{'action': 'assign_delivery', 'params': {'drone_id': 'FA-1', 'order_id': 'O1'}}",
+      "parsed_action": {
+        "action": "assign_delivery",
+        "params": {
+          "drone_id": "FA-1",
+          "order_id": "O1"
+        }
+      },
+      "valid_json": true,
+      "valid_action_shape": true,
+      "repaired": false,
+      "used_candidate_choice": false,
+      "error_code": null,
+      "notes": [
+        "parsed_python_literal"
+      ]
+    },
+    {
+      "task_id": "easy",
+      "label": "action_name_alias",
+      "raw_text": "{\"action_name\": \"assign_delivery\", \"params\": {\"drone_id\": \"FA-1\", \"order_id\": \"O1\"}}",
+      "parsed_action": {
+        "action": "assign_delivery",
+        "params": {
+          "drone_id": "FA-1",
+          "order_id": "O1"
+        }
+      },
+      "valid_json": true,
+      "valid_action_shape": true,
+      "repaired": false,
+      "used_candidate_choice": false,
+      "error_code": null,
+      "notes": []
+    },
+    {
+      "task_id": "easy",
+      "label": "nested_action",
+      "raw_text": "{\"action\": {\"action\": \"assign_delivery\", \"params\": {\"drone_id\": \"FA-1\", \"order_id\": \"O1\"}}}",
+      "parsed_action": {
+        "action": "assign_delivery",
+        "params": {
+          "drone_id": "FA-1",
+          "order_id": "O1"
+        }
+      },
+      "valid_json": true,
+      "valid_action_shape": true,
+      "repaired": true,
+      "used_candidate_choice": false,
+      "error_code": null,
+      "notes": [
+        "unwrapped_nested_action"
+      ]
+    },
+    {
+      "task_id": "easy",
+      "label": "candidate_choice",
+      "raw_text": "{\"choice\": 1}",
+      "parsed_action": {
+        "action": "assign_delivery",
+        "params": {
+          "drone_id": "FA-1",
+          "order_id": "O1"
+        }
+      },
+      "valid_json": true,
+      "valid_action_shape": true,
+      "repaired": true,
+      "used_candidate_choice": true,
+      "error_code": null,
+      "notes": [
+        "candidate_choice_1"
+      ]
+    },
+    {
+      "task_id": "easy",
+      "label": "extra_text",
+      "raw_text": "I would do this now: {\"action\": \"assign_delivery\", \"params\": {\"drone_id\": \"FA-1\", \"order_id\": \"O1\"}} because it is safe.",
+      "parsed_action": {
+        "action": "assign_delivery",
+        "params": {
+          "drone_id": "FA-1",
+          "order_id": "O1"
+        }
+      },
+      "valid_json": true,
+      "valid_action_shape": true,
+      "repaired": false,
+      "used_candidate_choice": false,
+      "error_code": null,
+      "notes": []
+    },
+    {
+      "task_id": "easy",
+      "label": "invalid_free_text",
+      "raw_text": "send the nearest drone immediately",
+      "parsed_action": {
+        "action": "__invalid__",
+        "params": {}
+      },
+      "valid_json": false,
+      "valid_action_shape": false,
+      "repaired": false,
+      "used_candidate_choice": false,
+      "error_code": "no_json_object",
+      "notes": [
+        "json_parse_failed"
+      ]
+    },
+    {
+      "task_id": "demo",
+      "label": "plain_json",
+      "raw_text": "{\"action\": \"assign_delivery\", \"params\": {\"drone_id\": \"FA-1\", \"order_id\": \"O1\"}}",
+      "parsed_action": {
+        "action": "assign_delivery",
+        "params": {
+          "drone_id": "FA-1",
+          "order_id": "O1"
+        }
+      },
+      "valid_json": true,
+      "valid_action_shape": true,
+      "repaired": false,
+      "used_candidate_choice": false,
+      "error_code": null,
+      "notes": []
+    },
+    {
+      "task_id": "demo",
+      "label": "markdown_fence",
+      "raw_text": "```json\n{\"action\": \"assign_delivery\", \"params\": {\"drone_id\": \"FA-1\", \"order_id\": \"O1\"}}\n```",
+      "parsed_action": {
+        "action": "assign_delivery",
+        "params": {
+          "drone_id": "FA-1",
+          "order_id": "O1"
+        }
+      },
+      "valid_json": true,
+      "valid_action_shape": true,
+      "repaired": false,
+      "used_candidate_choice": false,
+      "error_code": null,
+      "notes": [
+        "stripped_markdown_fence"
+      ]
+    },
+    {
+      "task_id": "demo",
+      "label": "single_quotes",
+      "raw_text": "{'action': 'assign_delivery', 'params': {'drone_id': 'FA-1', 'order_id': 'O1'}}",
+      "parsed_action": {
+        "action": "assign_delivery",
+        "params": {
+          "drone_id": "FA-1",
+          "order_id": "O1"
+        }
+      },
+      "valid_json": true,
+      "valid_action_shape": true,
+      "repaired": false,
+      "used_candidate_choice": false,
+      "error_code": null,
+      "notes": [
+        "parsed_python_literal"
+      ]
+    },
+    {
+      "task_id": "demo",
+      "label": "action_name_alias",
+      "raw_text": "{\"action_name\": \"assign_delivery\", \"params\": {\"drone_id\": \"FA-1\", \"order_id\": \"O1\"}}",
+      "parsed_action": {
+        "action": "assign_delivery",
+        "params": {
+          "drone_id": "FA-1",
+          "order_id": "O1"
+        }
+      },
+      "valid_json": true,
+      "valid_action_shape": true,
+      "repaired": false,
+      "used_candidate_choice": false,
+      "error_code": null,
+      "notes": []
+    },
+    {
+      "task_id": "demo",
+      "label": "nested_action",
+      "raw_text": "{\"action\": {\"action\": \"assign_delivery\", \"params\": {\"drone_id\": \"FA-1\", \"order_id\": \"O1\"}}}",
+      "parsed_action": {
+        "action": "assign_delivery",
+        "params": {
+          "drone_id": "FA-1",
+          "order_id": "O1"
+        }
+      },
+      "valid_json": true,
+      "valid_action_shape": true,
+      "repaired": true,
+      "used_candidate_choice": false,
+      "error_code": null,
+      "notes": [
+        "unwrapped_nested_action"
+      ]
+    },
+    {
+      "task_id": "demo",
+      "label": "candidate_choice",
+      "raw_text": "{\"choice\": 1}",
+      "parsed_action": {
+        "action": "assign_delivery",
+        "params": {
+          "drone_id": "FA-1",
+          "order_id": "O1"
+        }
+      },
+      "valid_json": true,
+      "valid_action_shape": true,
+      "repaired": true,
+      "used_candidate_choice": true,
+      "error_code": null,
+      "notes": [
+        "candidate_choice_1"
+      ]
+    },
+    {
+      "task_id": "demo",
+      "label": "extra_text",
+      "raw_text": "I would do this now: {\"action\": \"assign_delivery\", \"params\": {\"drone_id\": \"FA-1\", \"order_id\": \"O1\"}} because it is safe.",
+      "parsed_action": {
+        "action": "assign_delivery",
+        "params": {
+          "drone_id": "FA-1",
+          "order_id": "O1"
+        }
+      },
+      "valid_json": true,
+      "valid_action_shape": true,
+      "repaired": false,
+      "used_candidate_choice": false,
+      "error_code": null,
+      "notes": []
+    },
+    {
+      "task_id": "demo",
+      "label": "invalid_free_text",
+      "raw_text": "send the nearest drone immediately",
+      "parsed_action": {
+        "action": "__invalid__",
+        "params": {}
+      },
+      "valid_json": false,
+      "valid_action_shape": false,
+      "repaired": false,
+      "used_candidate_choice": false,
+      "error_code": "no_json_object",
+      "notes": [
+        "json_parse_failed"
+      ]
+    }
+  ]
+}

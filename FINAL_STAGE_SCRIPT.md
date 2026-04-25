@@ -8,7 +8,7 @@ DroneZ is an OpenEnv environment where an LLM can learn to act as a mission-leve
 
 Most drone demos focus on flying a drone. DroneZ focuses on the harder operational layer: deciding which drone should deliver which package, when to reroute, when to pause a risky zone, when to send drones to charge, and how to recover from failed drops.
 
-The environment follows the OpenEnv loop: reset, observe, act, step, reward, state. We compare random, naive, heuristic, and improved policies. In the deterministic demo, the improved policy reaches reward `89.0` versus heuristic `32.0`, while reducing safety violations from `8` to `0`. The real GRPO/Unsloth training path is prepared and dry-run validated; we do not claim trained-model improvement until the real compute run is complete.
+The environment follows the OpenEnv loop: reset, observe, act, step, reward, state. We compare random, naive, heuristic, and improved policies. In the deterministic demo, the improved policy reaches reward `89.0` versus heuristic `32.0`, while reducing safety violations from `8` to `0`. A real local GRPO-style run was attempted, but it did not improve because the model failed the action-format step; we now show the fix path with action-format SFT data and candidate-choice prompts.
 
 ## 2-Minute Demo Narration
 
@@ -93,7 +93,7 @@ Companies can adjust drone profiles: speed, payload, range, battery, charging ra
 
 ### 15. What would you improve next?
 
-Run real GRPO training, add more scenarios, wire deployment profiles into reset, and expand the replay UI into side-by-side comparison.
+Run action-format SFT, then candidate-choice GRPO, add more scenarios, wire deployment profiles into reset, and expand the replay UI into side-by-side comparison.
 
 ## Non-Technical Explanation
 

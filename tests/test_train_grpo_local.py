@@ -35,3 +35,24 @@ def test_training_fails_honestly_without_gpu(tmp_path: Path) -> None:
     assert result.returncode == 2
     assert "Local GRPO training is not ready:" in result.stderr
     assert not (output_dir / "training_metrics.json").exists()
+
+
+def test_format_check_writes_valid_action_rates(tmp_path: Path) -> None:
+    output_dir = tmp_path / "format_check"
+    result = _run(
+        [
+            sys.executable,
+            "scripts/train_grpo_local.py",
+            "--format-check",
+            "--tasks",
+            "easy,demo",
+            "--output-dir",
+            str(output_dir),
+        ]
+    )
+
+    assert result.returncode == 0
+    payload = json.loads((output_dir / "format_check.json").read_text())
+    assert payload["training_executed"] is False
+    assert payload["valid_json_rate"] >= 0.75
+    assert payload["valid_action_rate"] >= 0.75

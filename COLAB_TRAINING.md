@@ -30,6 +30,24 @@ python scripts/train_grpo_local.py --sanity-check --model Qwen/Qwen2.5-0.5B-Inst
 python scripts/train_grpo_colab.py --dry-run --model Qwen/Qwen2.5-0.5B-Instruct --tasks easy,medium,demo --output-dir artifacts/training
 ```
 
+## Action-Format Warm Start
+
+The first real local GRPO-style attempt exposed an action-format bottleneck: the model did not reliably emit valid DroneZ JSON actions, so reward stayed flat. Before another long RL run, generate SFT examples and run the format check:
+
+```bash
+python scripts/generate_sft_action_data.py --tasks easy,medium,demo,hard --output artifacts/training/sft_action_data.jsonl
+python scripts/train_action_format_sft.py --dry-run --data artifacts/training/sft_action_data.jsonl --output-dir artifacts/training/action_format_sft
+python scripts/train_grpo_local.py --format-check --candidate-choice --tasks easy,demo --output-dir artifacts/training/format_check
+```
+
+For the next real GPU attempt, prefer candidate-choice mode:
+
+```bash
+python scripts/train_grpo_local.py --real-train --candidate-choice --model Qwen/Qwen2.5-0.5B-Instruct --tasks easy,medium,demo --eval-tasks easy,medium,demo,hard --output-dir artifacts/training
+```
+
+Only claim trained-model improvement if `eval_after` beats `eval_before`.
+
 These commands should write:
 
 - `artifacts/results/training_smoke_metrics.json`
@@ -179,5 +197,4 @@ Repo notebook path:
 The rest of this guide remains compatible with the updated flow.
 
 ## 20. Existing guidance below
-
 
