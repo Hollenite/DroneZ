@@ -44,3 +44,13 @@ def test_training_smoke_and_dry_run_generate_outputs() -> None:
     payload = json.loads((ROOT / "artifacts" / "training" / "training_metrics.json").read_text())
     assert payload["mode"] == "dry-run"
     assert payload["training_executed"] is False
+
+
+def test_local_training_sanity_script_generates_output() -> None:
+    output_dir = ROOT / "artifacts" / "training" / "local_sanity"
+    _run([sys.executable, "scripts/train_grpo_local.py", "--sanity-check", "--output-dir", str(output_dir)])
+
+    payload = json.loads((output_dir / "sanity_check.json").read_text())
+    assert payload["mode"] == "local-grpo-sanity"
+    assert payload["training_executed"] is False
+    assert payload["selected_model"] == "Qwen/Qwen2.5-0.5B-Instruct"

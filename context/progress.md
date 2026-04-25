@@ -1,5 +1,6 @@
 # Progress
 
+- 2026-04-25T12:13:05+05:30 — Added a dedicated local GPU GRPO-style training entrypoint in `scripts/train_grpo_local.py`, expanded train extras/test coverage for honest sanity checks, and updated training docs/checklists to distinguish local real-training from the existing smoke/template paths.
 - 2026-04-22T17:10:04+05:30 — Bootstrap started. Moved the two source-of-truth spec documents into `context/` and began creating repository guidance and Claude project settings files.
 - 2026-04-22T17:20:30+05:30 — Added initial repository bootstrap files: root `CLAUDE.md`, `README.md`, `requirements.txt`, `openenv.yaml`, `.gitignore`, and committed `.claude/` worktree hook/settings support.
 - 2026-04-22T17:26:39+05:30 — Added Milestone 2 foundation files: task configs, reward/fleet configs, shared enums/models, deterministic seeding utilities, and tests verifying config/model loading.

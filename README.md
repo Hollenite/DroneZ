@@ -196,6 +196,7 @@ This repo currently includes:
 - `scripts/train_grpo.py --mode smoke`
 - `scripts/train_grpo.py --mode dry-run`
 - `scripts/train_grpo.py --mode trl-template`
+- `scripts/train_grpo_local.py`
 - `scripts/train_grpo_colab.py`
 - `notebooks/train_dronez_grpo_colab.ipynb`
 - `COLAB_TRAINING.md`
@@ -204,21 +205,83 @@ What is honest right now:
 
 - the smoke mode uses the actual environment loop locally
 - the dry-run mode prepares the real prompt/action interface and writes reference artifacts
-- the GRPO path is a dependency-gated Colab / hackathon-compute template
-- no fake trained-model claims or fake GRPO results are included
+- `scripts/train_grpo_local.py` is the dedicated local GPU path for a real GRPO-style run
+- the Colab entrypoint remains a dependency-gated template wrapper
+- no fake trained-model claims or fake GRPO results are included in tracked artifacts
 
 Honesty box:
 
 - Current measured improvement in this repo: deterministic `improved` policy vs baselines
-- Real GRPO / Unsloth training: pipeline ready, but not yet executed here
+- Real GRPO / Unsloth training has still not been executed in this tracked repo state
 - Update this section only after a real run produces `eval_before`, `eval_after`, and training plots
 
 Recommended next step onsite:
 
 1. Install train extras: `pip install -e .[train]`
-2. Run `python scripts/train_grpo_colab.py --model Qwen/Qwen2.5-0.5B-Instruct --tasks easy,medium,demo --output-dir artifacts/training` on Colab or hackathon compute
-3. Save real reward curves and before/after comparisons back into `artifacts/`
-4. Replace the honesty box with real training evidence only after the run finishes
+2. Run `python scripts/train_grpo_local.py --sanity-check --model Qwen/Qwen2.5-0.5B-Instruct --output-dir artifacts/training/local_sanity`
+3. Run `python scripts/train_grpo_local.py --model Qwen/Qwen2.5-0.5B-Instruct --tasks easy,medium,demo --eval-tasks easy,medium,demo,hard --output-dir artifacts/training` on a local GPU machine
+4. Save real reward curves and before/after comparisons back into `artifacts/`
+5. Replace the honesty box with real training evidence only after the run finishes
+
+Notes on the new local script:
+
+- `--sanity-check` writes honest dependency/GPU metadata without downloading a model or claiming training happened.
+- The real run writes canonical `training_metrics.json`, `eval_before.json`, and `eval_after.json` only after actual optimizer updates complete.
+- Large checkpoints or model weights should stay out of the git commit unless you intentionally want to publish them.
+
+Fallback Colab path:
+
+- `python scripts/train_grpo_colab.py --dry-run --model Qwen/Qwen2.5-0.5B-Instruct --tasks easy,medium,demo --output-dir artifacts/training` remains the supported Colab prep path today.
+- `python scripts/train_grpo_colab.py --model Qwen/Qwen2.5-0.5B-Instruct --tasks easy,medium,demo --output-dir artifacts/training` currently checks dependencies and writes a template plan; it does not yet produce real trained-model artifacts by itself.
+- If your laptop GPU is unavailable, use Colab for smoke/template validation today and run the real training loop from the local script logic on a GPU machine until the Colab wrapper is upgraded.
+
+Recent command notes:
+
+- `python scripts/train_grpo.py --mode smoke`
+- `python scripts/train_grpo.py --mode dry-run`
+- `python scripts/train_grpo_local.py --sanity-check --output-dir artifacts/training/local_sanity`
+- `python scripts/train_grpo_local.py --model Qwen/Qwen2.5-0.5B-Instruct --tasks easy,medium,demo --eval-tasks easy,medium,demo,hard --output-dir artifacts/training`
+- `python scripts/train_grpo_colab.py --dry-run --model Qwen/Qwen2.5-0.5B-Instruct --tasks easy,medium,demo --output-dir artifacts/training`
+- `python scripts/train_grpo_colab.py --model Qwen/Qwen2.5-0.5B-Instruct --tasks easy,medium,demo --output-dir artifacts/training`
+
+Remember: only the local GPU script is intended to produce `training_executed: true` in tracked training artifacts.
+
+What the current repo state proves:
+
+- local smoke execution works
+- dry-run artifact generation works
+- the local GPU training entrypoint now exists and can self-report dependency/GPU readiness
+- a real trained-model claim still requires an actual GPU run and the resulting evaluation artifacts
+
+What still requires external compute:
+
+- any real GRPO/TRL/Unsloth optimization pass
+- before/after trained-model evaluation evidence
+- training plots generated from a completed run
+
+Use the new local script if you want the shortest path from codebase to an actual run on your own machine.
+
+Recommended models:
+
+- `Qwen/Qwen2.5-0.5B-Instruct`
+- `Qwen/Qwen2.5-1.5B-Instruct`
+- `google/gemma-2-2b-it`
+
+The default curriculum remains:
+
+- `easy -> medium -> demo`, with `hard` reserved for evaluation unless you explicitly train on it.
+
+The local training loop keeps the existing prompt/action contract:
+
+- prompt source: DroneZ observation summary plus supported action list
+- action format: strict JSON with keys `action` and `params`
+- reward source: the real reward returned by `DroneZEnvironment.step(...)`
+
+Keep all judge-facing claims aligned with those facts.
+
+If you publish results later, prefer summarizing the actual `eval_before` / `eval_after` deltas rather than describing the training method in abstract.
+
+The repo now has a clear split between scaffolding and real local-GPU execution, but real training evidence still depends on an actual GPU run. Use the local script for your laptop/workstation GPU and keep judge-facing claims tied to the generated `eval_before` and `eval_after` files.
 
 ## 12. Visual Demo
 

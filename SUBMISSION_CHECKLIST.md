@@ -13,7 +13,9 @@
 | OpenEnv validation | `openenv validate` | Ready for multi-mode deployment | `PASS` |
 | Local server endpoints | `python -m uvicorn server.app:app --host 127.0.0.1 --port 8000` plus `/health`, `/tasks`, `/reset`, `/state`, `/step` curls | Server binds and serves the OpenEnv-compatible API | `PASS` |
 | Docker build | `docker build -t dronez .` | Docker image builds successfully | `BLOCKED` |
-| Real GRPO run | `python scripts/train_grpo_colab.py --model Qwen/Qwen2.5-0.5B-Instruct --tasks easy,medium,demo --output-dir artifacts/training` on Colab / hackathon GPU | Real `eval_before`, `eval_after`, and training metrics | `NOT RUN` |
+| Local GRPO sanity check | `python scripts/train_grpo_local.py --sanity-check --model Qwen/Qwen2.5-0.5B-Instruct --output-dir artifacts/training/local_sanity` | Honest dependency/GPU metadata without claiming training happened | `PASS` |
+| Real local GRPO run | `python scripts/train_grpo_local.py --model Qwen/Qwen2.5-0.5B-Instruct --tasks easy,medium,demo --eval-tasks easy,medium,demo,hard --output-dir artifacts/training` on a local GPU machine | Real `eval_before`, `eval_after`, and training metrics | `NOT RUN` |
+| Colab template check | `python scripts/train_grpo_colab.py --model Qwen/Qwen2.5-0.5B-Instruct --tasks easy,medium,demo --output-dir artifacts/training` on Colab / hackathon GPU | Dependency/template validation and `grpo_template.json`, without claiming training happened | `NOT RUN` |
 | HF Space deployment | Follow `HF_SPACE_DEPLOYMENT.md` | Live public Space with `/health`, `/tasks`, `/reset`, `/step`, `/state` | `NOT RUN` |
 | HF link in README | Edit `README.md` Submission Links section | Real Space URL added | `PASS` |
 | Video / blog / slides links | Edit `README.md` Submission Links section | Real supporting links added | `TODO` |
