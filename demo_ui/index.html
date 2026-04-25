@@ -3,68 +3,97 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>DroneZ Replay Demo</title>
+    <title>DroneZ OpenEnv Replay</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
     <div class="app-shell">
       <header class="hero">
-        <div>
-          <p class="eyebrow">DroneZ Replay</p>
-          <h1>LLM Fleet Operations Controller</h1>
+        <div class="hero-copy">
+          <p class="eyebrow">DroneZ OpenEnv</p>
+          <h1>Mission-Level Drone Fleet Control</h1>
           <p class="subhead">
-            Replay actual environment traces showing drones, hazards, charging,
-            urgent orders, and reward evolution over time.
+            A trace-driven replay of real DroneZ environment rollouts: urgent orders,
+            no-fly zones, weather disruption, battery-aware dispatch, charging, and rewards.
           </p>
+          <div class="hero-actions">
+            <a class="cta primary" href="#simulator">Open Demo</a>
+            <a class="cta" href="/docs">API Docs</a>
+            <a class="cta" href="/api">Runtime JSON</a>
+            <a class="cta" href="https://github.com/SAICHAITU2012/Meta-Drone-Environment">GitHub</a>
+            <a class="cta" href="https://huggingface.co/spaces/Krishna2521/dronez-openenv">HF Space</a>
+          </div>
         </div>
-        <div class="controls">
-          <label>
-            Scenario
-            <select id="scenarioSelect">
-              <option value="demo">demo</option>
-              <option value="easy">easy</option>
-              <option value="medium">medium</option>
-              <option value="hard">hard</option>
-            </select>
-          </label>
-          <label>
-            Policy
-            <select id="policySelect">
-              <option value="random">random</option>
-              <option value="naive">naive</option>
-              <option value="heuristic">heuristic</option>
-              <option value="improved" selected>improved</option>
-            </select>
-          </label>
-          <label>
-            Speed
-            <input id="speedRange" type="range" min="250" max="2000" step="250" value="1000" />
-          </label>
-          <div class="button-row">
-            <button id="loadBtn">Load</button>
-            <button id="playBtn">Play</button>
-            <button id="pauseBtn">Pause</button>
-            <button id="resetBtn">Reset</button>
-            <button id="prevBtn">Back</button>
-            <button id="nextBtn">Next</button>
+        <div class="result-card">
+          <span class="result-label">Demo Scenario Result</span>
+          <strong>Safety violations reduced 8 → 0</strong>
+          <div class="result-grid">
+            <span>Heuristic reward</span><b>32.0</b>
+            <span>Improved reward</span><b>89.0</b>
+            <span>Invalid actions</span><b>0 → 0</b>
+            <span>Urgent success</span><b>1 → 1</b>
           </div>
         </div>
       </header>
 
-      <main class="layout">
+      <section class="controls-card" aria-label="Replay controls">
+        <label>
+          Scenario
+          <select id="scenarioSelect">
+            <option value="demo" selected>demo</option>
+            <option value="easy">easy</option>
+            <option value="medium">medium</option>
+            <option value="hard">hard</option>
+          </select>
+        </label>
+        <label>
+          Policy
+          <select id="policySelect">
+            <option value="improved" selected>improved</option>
+            <option value="heuristic">heuristic</option>
+            <option value="random">random</option>
+            <option value="naive">naive</option>
+          </select>
+        </label>
+        <label>
+          Speed
+          <input id="speedRange" type="range" min="250" max="2000" step="250" value="850" />
+        </label>
+        <div class="button-row">
+          <button id="loadBtn">Load</button>
+          <button id="playBtn">Play</button>
+          <button id="pauseBtn">Pause</button>
+          <button id="resetBtn">Reset</button>
+          <button id="prevBtn">Back</button>
+          <button id="nextBtn">Next</button>
+        </div>
+      </section>
+
+      <main id="simulator" class="layout">
         <section class="viewport-card">
-          <svg id="mapSvg" viewBox="0 0 900 520" aria-label="DroneZ city replay map"></svg>
+          <div class="map-topline">
+            <div>
+              <span id="scenarioBadge" class="badge">scenario: demo</span>
+              <span id="policyBadge" class="badge strong">policy: improved</span>
+            </div>
+            <div id="frameIndicator" class="frame-indicator">Frame 0 / 0</div>
+          </div>
+          <div class="progress-shell"><div id="progressBar" class="progress-bar"></div></div>
+          <div id="errorPanel" class="error-panel" hidden></div>
+          <svg id="mapSvg" viewBox="0 0 980 640" aria-label="DroneZ city replay map"></svg>
+          <div class="legend">
+            <span><i class="dot drone"></i> Drone</span>
+            <span><i class="dot urgent"></i> Urgent / medical order</span>
+            <span><i class="dot normal"></i> Normal order</span>
+            <span><i class="dot hazard"></i> No-fly / storm / paused</span>
+            <span><i class="dot charger"></i> Charger</span>
+          </div>
         </section>
 
         <aside class="sidebar">
-          <section class="panel">
-            <h2>Stage Flow</h2>
-            <ol class="flow-list">
-              <li>Load `random` or `naive` first to show weak control.</li>
-              <li>Switch to `heuristic` to show the stable baseline.</li>
-              <li>Switch to `improved` to show the strongest deterministic controller.</li>
-              <li>Use the reward breakdown and policy snapshot to explain why the score changes.</li>
-            </ol>
+          <section class="panel comparison-card">
+            <h2>Baseline vs Improved</h2>
+            <div id="comparisonSummary" class="summary-stack"></div>
           </section>
 
           <section class="panel metrics">
@@ -72,9 +101,9 @@
             <div id="metricsGrid" class="metric-grid"></div>
           </section>
 
-          <section class="panel">
-            <h2>Policy Snapshot</h2>
-            <div id="comparisonSummary" class="summary-stack"></div>
+          <section class="panel action-card">
+            <h2>Last Action</h2>
+            <pre id="lastActionBox" class="action-box"></pre>
           </section>
 
           <section class="panel">

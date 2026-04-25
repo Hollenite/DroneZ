@@ -8,14 +8,21 @@ from urbanair.server.app import app
 client = TestClient(app)
 
 
-def test_root_endpoint_describes_runtime() -> None:
-    response = client.get("/")
+def test_root_endpoint_opens_demo() -> None:
+    response = client.get("/", follow_redirects=False)
 
+    assert response.status_code == 307
+    assert response.headers["location"] == "/demo/index.html"
+
+
+def test_api_endpoint_describes_runtime() -> None:
+    response = client.get("/api")
     assert response.status_code == 200
     payload = response.json()
     assert payload["name"] == "DroneZ OpenEnv Runtime"
     assert payload["health"] == "/health"
     assert payload["docs"] == "/docs"
+    assert payload["demo"] == "/demo/index.html"
 
 
 def test_tasks_endpoint_lists_expected_tasks() -> None:

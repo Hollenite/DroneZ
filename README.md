@@ -383,11 +383,16 @@ OpenEnv / HF Space:
 
 - HF Space repo: `https://huggingface.co/spaces/Krishna2521/dronez-openenv`
 - HF Space runtime: `https://krishna2521-dronez-openenv.hf.space`
+- Root app / judge demo: `https://krishna2521-dronez-openenv.hf.space`
+- API docs: `https://krishna2521-dronez-openenv.hf.space/docs`
+- Health: `https://krishna2521-dronez-openenv.hf.space/health`
 - GitHub repo: `https://github.com/SAICHAITU2012/Meta-Drone-Environment`
 - Colab notebook: `https://colab.research.google.com/drive/1ge0s9eYcbeE25oEXh6t-wySGh3ZCR9AV`
 - Blog / writeup: `BLOG.md` locally, replace with public Hugging Face/blog URL before final submission
 - Video / YouTube link: `FILL_ME`
 - Slides / presentation link: `FILL_ME`
+
+The root runtime URL opens the judge-facing DroneZ replay demo. API metadata is available at `/api` and `/runtime`, while the OpenAPI docs remain available at `/docs`.
 
 ## 15.1 What Is Already Proven
 

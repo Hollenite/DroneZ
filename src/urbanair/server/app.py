@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -49,11 +50,11 @@ if ARTIFACTS_DIR.exists():
     app.mount("/artifacts", StaticFiles(directory=ARTIFACTS_DIR), name="artifacts")
 
 
-@app.get("/")
-def root() -> dict[str, object]:
+def runtime_manifest() -> dict[str, object]:
     return {
         "name": "DroneZ OpenEnv Runtime",
         "status": "ok",
+        "root": "/",
         "docs": "/docs",
         "health": "/health",
         "tasks": "/tasks",
@@ -61,7 +62,27 @@ def root() -> dict[str, object]:
         "default_step": "/step",
         "default_state": "/state",
         "demo": "/demo/index.html" if DEMO_DIR.exists() else None,
+        "artifacts": "/artifacts" if ARTIFACTS_DIR.exists() else None,
+        "space": "https://huggingface.co/spaces/Krishna2521/dronez-openenv",
+        "github": "https://github.com/SAICHAITU2012/Meta-Drone-Environment",
     }
+
+
+@app.get("/", response_model=None)
+def root():
+    if DEMO_DIR.exists():
+        return RedirectResponse(url="/demo/index.html", status_code=307)
+    return runtime_manifest()
+
+
+@app.get("/api")
+def api_manifest() -> dict[str, object]:
+    return runtime_manifest()
+
+
+@app.get("/runtime")
+def runtime() -> dict[str, object]:
+    return runtime_manifest()
 
 
 @app.get("/health")
