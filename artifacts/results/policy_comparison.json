@@ -36,7 +36,7 @@
     },
     "heuristic": {
       "mean_total_reward": -281.5,
-      "mean_normalized_score": 0.07972222222222224,
+      "mean_normalized_score": 0.07972222222222222,
       "completed_deliveries": 10,
       "failed_deliveries": 0,
       "urgent_successes": 5,

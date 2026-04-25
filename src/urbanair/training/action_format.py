@@ -145,12 +145,14 @@ def build_action_prompt(
 
     if candidate_choice:
         response_rule = (
-            'Return JSON only. Prefer a numbered candidate: {"choice": 1}. '
-            'You may also return a full action JSON if necessary.'
+            'Return exactly one JSON object and nothing else. Prefer a numbered candidate: {"choice": 1}. '
+            'If you cannot use a choice, return exactly one full action JSON object.'
         )
     else:
-        response_rule = 'Return JSON only: {"action": "assign_delivery", "params": {"drone_id": "FA-1", "order_id": "O1"}}'
-
+        response_rule = (
+            'Return exactly one JSON object and nothing else: '
+            '{"action": "assign_delivery", "params": {"drone_id": "FA-1", "order_id": "O1"}}'
+        )
     return "\n".join(
         [
             "You are DroneZ, an LLM mission-level drone fleet controller.",

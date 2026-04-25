@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import argparse
 import copy
+import hashlib
 import importlib.util
+import inspect
 import json
+import os
 import random
 import sys
 import time
@@ -29,6 +32,21 @@ TRAINING_DIR = ROOT / "artifacts" / "training"
 DEFAULT_MODEL = "Qwen/Qwen2.5-0.5B-Instruct"
 DEFAULT_TASKS = ["easy", "medium", "demo"]
 DEFAULT_EVAL_TASKS = ["easy", "medium", "demo", "hard"]
+HF_JOB_ENV_VARS = (
+    "HF_JOB_ID",
+    "HF_SPACE_ID",
+    "SPACE_ID",
+    "SPACE_AUTHOR_NAME",
+    "SPACE_REPO_NAME",
+)
+SAFE_TOP_K = 50
+SAFE_REPETITION_PENALTY = 1.05
+TRAINING_DEFAULT_CANDIDATE_CHOICE = True
+ACTION_GENERATION_TEMPERATURE = 0.35
+ACTION_GENERATION_TOP_P = 0.9
+ACTION_GENERATION_MAX_NEW_TOKENS = 48
+PROMPT_PREVIEW_CHARS = 512
+FAILED_EXAMPLE_LIMIT = 3
 
 
 class LocalModelPolicy(Policy):
@@ -58,6 +76,66 @@ class LocalGRPOTrainer:
         self.loss_history: list[float] = []
         self.reward_history: list[float] = []
         self.training_log: list[dict[str, Any]] = []
+        self.hf_safe_generation = _is_hf_job_environment()
+        self.use_safe_sampling = self.hf_safe_generation
+        self.remove_invalid_values_supported = False
+        self.renormalize_logits_supported = False
+        self.generation_safety_flags: dict[str, Any] = {
+            "hf_safe_generation": self.hf_safe_generation,
+            "use_safe_sampling": self.use_safe_sampling,
+            "remove_invalid_values": False,
+            "renormalize_logits": False,
+        }
+        self.detected_transformers_version: str | None = None
+        self.device_capability_major: int | None = None
+        self.device_name: str | None = None
+        self.training_dtype_name: str | None = None
+        self.sampling_dtype_name: str | None = None
+        self.sampling_model = None
+        self.sampling_tokenizer = None
+        self.sampling_device = None
+        self.skipped_nonfinite_updates = 0
+        self.latest_generation_kwargs: dict[str, Any] = {}
+        self.latest_generation_used_sampling_model = False
+        self.latest_generation_hf_safe = self.hf_safe_generation
+        self.latest_generation_model_kind = "training"
+        self.latest_generation_support_flags: dict[str, bool] = {}
+        self.latest_generation_transformers_version: str | None = None
+        self.latest_generation_dtype_name: str | None = None
+        self.latest_generation_device_type: str | None = None
+        self.latest_generation_temperature: float | None = None
+        self.latest_generation_top_p: float | None = None
+        self.latest_generation_top_k: int | None = None
+        self.latest_generation_repetition_penalty: float | None = None
+        self.latest_generation_removed_invalid_values = False
+        self.latest_generation_renormalize_logits = False
+        self.latest_generation_pad_token_id: int | None = None
+        self.latest_generation_eos_token_id: int | None = None
+        self.latest_generation_max_new_tokens: int | None = None
+        self.latest_generation_device_capability_major: int | None = None
+        self.latest_generation_device_name: str | None = None
+        self.latest_generation_sampling_device_name: str | None = None
+        self.latest_generation_sampling_dtype_name: str | None = None
+        self.latest_generation_input_length: int | None = None
+        self.latest_generation_completion_length: int | None = None
+        self.latest_generation_use_cache = False
+        self.latest_generation_do_sample = False
+        self.training_candidate_choice = False if args.disable_training_candidate_choice else (TRAINING_DEFAULT_CANDIDATE_CHOICE if args.candidate_choice is None else bool(args.candidate_choice))
+        self.training_generation_temperature = min(self.args.temperature, self.args.action_temperature)
+        self.training_generation_top_p = min(self.args.top_p, self.args.action_top_p)
+        self.training_generation_max_new_tokens = min(self.args.max_new_tokens, self.args.action_max_new_tokens)
+        self.last_prompt_preview: str | None = None
+        self.last_prompt_hash: str | None = None
+        self.last_prompt_char_length = 0
+        self.last_candidate_count = 0
+        self.last_prompt_token_length: int | None = None
+        self.last_completion_token_length: int | None = None
+        self.last_generation_stop_reason: str | None = None
+        self.last_parser_error_counts: dict[str, int] = {}
+        self.last_failed_examples: list[dict[str, Any]] = []
+        self.last_candidate_choice_rate = 0.0
+        self.last_repair_rate = 0.0
+        self.last_invalid_action_cap_hits = 0
 
     def run(self) -> dict[str, Path]:
         self._validate_training_environment()
@@ -101,6 +179,25 @@ class LocalGRPOTrainer:
                 "max_continuation_steps": self.args.max_continuation_steps,
                 "max_actions": self.args.max_actions,
             },
+            "generation_safety": self.generation_safety_flags,
+            "sampling_model": {
+                "enabled": self.use_safe_sampling,
+                "dtype": self.sampling_dtype_name,
+            },
+            "action_generation": {
+                "candidate_choice_default": self.training_candidate_choice,
+                "temperature": self.training_generation_temperature,
+                "top_p": self.training_generation_top_p,
+                "max_new_tokens": self.training_generation_max_new_tokens,
+            },
+            "parser_error_code_counts": _parser_error_code_counts(self.training_log),
+            "candidate_choice_rate": _training_rate(self.training_log, "used_candidate_choice"),
+            "repair_rate": _training_rate(self.training_log, "repaired"),
+            "invalid_action_cap_hits": sum(1 for item in self.training_log if item.get("done_reason") == "invalid_action_cap_reached"),
+            "failed_parse_examples": _failed_parse_examples(self.training_log),
+            "prompt_length_stats": _prompt_length_stats(self.training_log),
+            "completion_length_stats": _completion_length_stats(self.training_log),
+            "skipped_nonfinite_updates": self.skipped_nonfinite_updates,
             "duration_seconds": duration_seconds,
             "training_log": self.training_log,
             "loss_history": self.loss_history,
@@ -160,8 +257,14 @@ class LocalGRPOTrainer:
             "selected_model": self.args.model,
             "curriculum": self.tasks,
             "eval_tasks": self.eval_tasks,
+            "candidate_choice_default": self.training_candidate_choice,
             "dependency_status": self.dependencies,
             "device": self._device_summary(),
+            "generation_safety": self.generation_safety_flags,
+            "sampling_model": {
+                "enabled": self.use_safe_sampling,
+                "dtype": self.sampling_dtype_name,
+            },
             "output_dir": str(self.output_dir),
         }
         destination = write_json(self.output_dir / "sanity_check.json", payload)
@@ -169,7 +272,7 @@ class LocalGRPOTrainer:
 
     def choose_action(self, observation: dict[str, Any], *, do_sample: bool) -> dict[str, Any]:
         candidate_actions = build_candidate_actions(observation)
-        prompt = build_action_prompt(observation, candidate_choice=self.args.candidate_choice)
+        prompt = build_action_prompt(observation, candidate_choice=self.training_candidate_choice)
         text, _, _ = self._generate_completion(prompt, do_sample=do_sample)
         return safe_parse_action(text, observation=observation, candidate_actions=candidate_actions)
 
@@ -187,8 +290,10 @@ class LocalGRPOTrainer:
 
         while not done:
             candidate_actions = build_candidate_actions(observation)
-            prompt = build_action_prompt(observation, candidate_choice=self.args.candidate_choice)
+            prompt = build_action_prompt(observation, candidate_choice=self.training_candidate_choice)
             candidates = []
+            prompt_preview = prompt[:PROMPT_PREVIEW_CHARS]
+            prompt_hash = hashlib.sha256(prompt.encode("utf-8")).hexdigest()[:16]
             for _ in range(self.args.group_size):
                 raw_text, prompt_ids, completion_ids = self._generate_completion(prompt, do_sample=True)
                 parse_result = parse_llm_action(raw_text, observation=observation, candidate_actions=candidate_actions)
@@ -206,11 +311,34 @@ class LocalGRPOTrainer:
                             "error_code": parse_result.error_code,
                             "notes": parse_result.notes,
                         },
+                        "prompt_hash": prompt_hash,
+                        "prompt_preview": prompt_preview,
+                        "prompt_char_length": len(prompt),
+                        "candidate_count": len(candidate_actions),
+                        "prompt_token_length": int(prompt_ids.shape[0]),
+                        "completion_token_length": int(completion_ids.shape[0]),
+                        "generation": {
+                            "temperature": self.latest_generation_temperature,
+                            "top_p": self.latest_generation_top_p,
+                            "max_new_tokens": self.latest_generation_max_new_tokens,
+                            "stop_reason": self.last_generation_stop_reason,
+                            "do_sample": self.latest_generation_do_sample,
+                        },
                         "prompt_ids": prompt_ids,
                         "completion_ids": completion_ids,
                         **estimate,
                     }
                 )
+            self.last_parser_error_counts = _error_code_counts(candidates)
+            self.last_failed_examples = _candidate_failure_examples(candidates)
+            self.last_candidate_choice_rate = _candidate_flag_rate(candidates, "used_candidate_choice")
+            self.last_repair_rate = _candidate_flag_rate(candidates, "repaired")
+            self.last_prompt_preview = prompt_preview
+            self.last_prompt_hash = prompt_hash
+            self.last_prompt_char_length = len(prompt)
+            self.last_candidate_count = len(candidate_actions)
+            self.last_prompt_token_length = max((candidate.get("prompt_token_length", 0) for candidate in candidates), default=0)
+            self.last_completion_token_length = max((candidate.get("completion_token_length", 0) for candidate in candidates), default=0)
 
             rewards = self._torch.tensor(
                 [candidate["estimated_total_return"] for candidate in candidates],
@@ -229,14 +357,26 @@ class LocalGRPOTrainer:
                 logprob = self._mean_logprob_of_completion(candidate["prompt_ids"], candidate["completion_ids"])
                 losses.append(-advantage.detach() * logprob)
             loss = self._torch.stack(losses).mean()
-            loss.backward()
-            self._torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
-            self.optimizer.step()
+            should_step = True
+            if self.hf_safe_generation and not bool(self._torch.isfinite(loss).all().item()):
+                should_step = False
+                self.skipped_nonfinite_updates += 1
+                self.optimizer.zero_grad(set_to_none=True)
+            else:
+                loss.backward()
+                self._torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
+                if self.hf_safe_generation and self._has_nonfinite_gradients():
+                    should_step = False
+                    self.skipped_nonfinite_updates += 1
+                    self.optimizer.zero_grad(set_to_none=True)
+            if should_step:
+                self.optimizer.step()
 
             best_candidate = candidates[int(self._torch.argmax(rewards).item())]
             observation, reward, done, info = env.step(best_candidate["action"])
             episode_return += float(reward)
             invalid_action_count = int(info.get("invalid_action_count", invalid_action_count))
+            self.last_invalid_action_cap_hits = 1 if info.get("done_reason") == "invalid_action_cap_reached" else 0
             update_steps += 1
             loss_value = float(loss.detach().cpu())
             episode_loss_total += loss_value
@@ -250,6 +390,15 @@ class LocalGRPOTrainer:
                 "repaired": candidate["parse"]["repaired"],
                 "used_candidate_choice": candidate["parse"]["used_candidate_choice"],
                 "error_code": candidate["parse"]["error_code"],
+                "notes": candidate["parse"]["notes"],
+                "raw_text": candidate["raw_text"],
+                "prompt_hash": candidate["prompt_hash"],
+                "prompt_preview": candidate["prompt_preview"],
+                "prompt_char_length": candidate["prompt_char_length"],
+                "prompt_token_length": candidate["prompt_token_length"],
+                "completion_token_length": candidate["completion_token_length"],
+                "candidate_count": candidate["candidate_count"],
+                "generation": candidate["generation"],
                 "invalid_action": candidate["invalid_action"],
                 "estimated_total_return": round(float(candidate["estimated_total_return"]), 4),
             }
@@ -265,7 +414,18 @@ class LocalGRPOTrainer:
             "done_reason": info.get("done_reason", "unknown"),
             "terminated_by": info.get("terminated_by", "unknown"),
             "final_cumulative_reward": info.get("cumulative_reward", {}),
-            "candidate_choice": self.args.candidate_choice,
+            "candidate_choice": self.training_candidate_choice,
+            "parser_error_code_counts": self.last_parser_error_counts,
+            "candidate_choice_rate": self.last_candidate_choice_rate,
+            "repair_rate": self.last_repair_rate,
+            "failed_parse_examples": self.last_failed_examples,
+            "prompt_preview": self.last_prompt_preview,
+            "prompt_hash": self.last_prompt_hash,
+            "prompt_char_length": self.last_prompt_char_length,
+            "candidate_count": self.last_candidate_count,
+            "prompt_token_length": self.last_prompt_token_length,
+            "completion_token_length": self.last_completion_token_length,
+            "invalid_action_cap_hits": self.last_invalid_action_cap_hits,
             "no_learning_signal_warning": no_learning_signal,
             "sample_parse_results": current_samples,
             "valid_json_rate": _rate(sample["valid_json"] for sample in current_samples),
@@ -342,7 +502,7 @@ class LocalGRPOTrainer:
                 env = DroneZEnvironment(default_task_id=task_id, max_episode_actions=self.args.max_actions)
                 observation, _ = env.reset(task_id)
                 candidate_actions = build_candidate_actions(observation)
-                prompt = build_action_prompt(observation, candidate_choice=self.args.candidate_choice)
+                prompt = build_action_prompt(observation, candidate_choice=self.training_candidate_choice)
                 raw_text, _, _ = self._generate_completion(prompt, do_sample=False)
                 result = parse_llm_action(raw_text, observation=observation, candidate_actions=candidate_actions)
                 samples.append(
@@ -409,35 +569,93 @@ class LocalGRPOTrainer:
             self.model.train()
 
     def _generate_completion(self, prompt: str, *, do_sample: bool):
-        inputs = self.tokenizer(
+        generator_model = self.sampling_model if do_sample and self.use_safe_sampling else self.model
+        generator_tokenizer = self.sampling_tokenizer if do_sample and self.use_safe_sampling else self.tokenizer
+        generator_device = self.sampling_device if do_sample and self.use_safe_sampling else self.device
+        generator_kind = "sampling" if do_sample and self.use_safe_sampling else "training"
+        generator_dtype_name = self.sampling_dtype_name if do_sample and self.use_safe_sampling else self.dtype_name
+
+        inputs = generator_tokenizer(
             prompt,
             return_tensors="pt",
             truncation=True,
             max_length=self.args.max_prompt_tokens,
         )
-        input_ids = inputs["input_ids"].to(self.device)
-        attention_mask = inputs["attention_mask"].to(self.device)
+        input_ids = inputs["input_ids"].to(generator_device)
+        attention_mask = inputs["attention_mask"].to(generator_device)
 
         generation_kwargs = {
             "input_ids": input_ids,
             "attention_mask": attention_mask,
             "do_sample": do_sample,
-            "max_new_tokens": self.args.max_new_tokens,
-            "pad_token_id": self.tokenizer.pad_token_id,
-            "eos_token_id": self.tokenizer.eos_token_id,
+            "max_new_tokens": self.training_generation_max_new_tokens if do_sample else self.args.max_new_tokens,
+            "pad_token_id": generator_tokenizer.pad_token_id,
+            "eos_token_id": generator_tokenizer.eos_token_id,
         }
         if do_sample:
-            generation_kwargs["temperature"] = self.args.temperature
-            generation_kwargs["top_p"] = self.args.top_p
+            generation_kwargs["temperature"] = self.training_generation_temperature
+            generation_kwargs["top_p"] = self.training_generation_top_p
+            generation_kwargs["top_k"] = SAFE_TOP_K
+            generation_kwargs["repetition_penalty"] = SAFE_REPETITION_PENALTY
+            if self.remove_invalid_values_supported:
+                generation_kwargs["remove_invalid_values"] = True
+            if self.renormalize_logits_supported:
+                generation_kwargs["renormalize_logits"] = True
+            if self.hf_safe_generation:
+                generation_kwargs["top_k"] = SAFE_TOP_K
+                generation_kwargs["repetition_penalty"] = SAFE_REPETITION_PENALTY
+                if self.remove_invalid_values_supported:
+                    generation_kwargs["remove_invalid_values"] = True
+                if self.renormalize_logits_supported:
+                    generation_kwargs["renormalize_logits"] = True
+            self.last_generation_stop_reason = "max_new_tokens"
+        else:
+            self.last_generation_stop_reason = "eos_or_length"
+
+        self.latest_generation_kwargs = {
+            key: value for key, value in generation_kwargs.items() if key not in {"input_ids", "attention_mask"}
+        }
+        self.latest_generation_dtype_name = generator_dtype_name
+        self.latest_generation_device_type = getattr(generator_device, "type", str(generator_device))
+        self.latest_generation_used_sampling_model = bool(do_sample and self.use_safe_sampling)
+        self.latest_generation_support_flags = {
+            "remove_invalid_values": self.remove_invalid_values_supported,
+            "renormalize_logits": self.renormalize_logits_supported,
+        }
+        self.latest_generation_hf_safe = self.hf_safe_generation
+        self.latest_generation_do_sample = do_sample
+        self.latest_generation_temperature = generation_kwargs.get("temperature")
+        self.latest_generation_top_p = generation_kwargs.get("top_p")
+        self.latest_generation_top_k = generation_kwargs.get("top_k")
+        self.latest_generation_repetition_penalty = generation_kwargs.get("repetition_penalty")
+        self.latest_generation_removed_invalid_values = bool(generation_kwargs.get("remove_invalid_values", False))
+        self.latest_generation_renormalize_logits = bool(generation_kwargs.get("renormalize_logits", False))
+        self.latest_generation_model_kind = generator_kind
+        self.latest_generation_transformers_version = self.detected_transformers_version
+        self.latest_generation_use_cache = bool(getattr(generator_model.config, "use_cache", False))
+        self.latest_generation_pad_token_id = generation_kwargs["pad_token_id"]
+        self.latest_generation_eos_token_id = generation_kwargs["eos_token_id"]
+        self.latest_generation_max_new_tokens = generation_kwargs["max_new_tokens"]
+        self.latest_generation_device_capability_major = self.device_capability_major
+        self.latest_generation_device_name = self.device_name
+        self.latest_generation_sampling_device_name = self.sampling_device.type if self.sampling_device is not None else None
+        self.latest_generation_sampling_dtype_name = self.sampling_dtype_name
+        self.latest_generation_input_length = int(input_ids.shape[1])
 
         with self._torch.no_grad():
-            outputs = self.model.generate(**generation_kwargs)
+            self.last_prompt_token_length = int(input_ids.shape[1])
+            self.last_prompt_preview = prompt[:PROMPT_PREVIEW_CHARS]
+            self.last_prompt_hash = hashlib.sha256(prompt.encode("utf-8")).hexdigest()[:16]
+            self.last_prompt_char_length = len(prompt)
+            outputs = generator_model.generate(**generation_kwargs)
 
         prompt_length = input_ids.shape[1]
         completion_ids = outputs[0, prompt_length:].detach().cpu()
+        self.latest_generation_completion_length = int(completion_ids.shape[0])
+        self.last_completion_token_length = self.latest_generation_completion_length
         if completion_ids.numel() == 0:
-            completion_ids = self._torch.tensor([self.tokenizer.eos_token_id], dtype=self._torch.long)
-        text = self.tokenizer.decode(completion_ids, skip_special_tokens=True)
+            completion_ids = self._torch.tensor([generator_tokenizer.eos_token_id], dtype=self._torch.long)
+        text = generator_tokenizer.decode(completion_ids, skip_special_tokens=True)
         return text, input_ids[0].detach().cpu(), completion_ids
 
     def _mean_logprob_of_completion(self, prompt_ids_cpu, completion_ids_cpu):
@@ -454,10 +672,21 @@ class LocalGRPOTrainer:
         start = prompt_length - 1
         completion_logits = logits[:, start : start + completion_length, :]
         completion_targets = targets[:, start : start + completion_length]
+        if self.hf_safe_generation:
+            completion_logits = completion_logits.float()
         token_logprobs = self._torch.log_softmax(completion_logits, dim=-1).gather(
             -1, completion_targets.unsqueeze(-1)
         ).squeeze(-1)
         return token_logprobs.mean()
+
+    def _has_nonfinite_gradients(self) -> bool:
+        for parameter in self.model.parameters():
+            grad = getattr(parameter, "grad", None)
+            if grad is None:
+                continue
+            if not bool(self._torch.isfinite(grad).all().item()):
+                return True
+        return False
 
     def _validate_training_environment(self) -> None:
         missing = [name for name in ("torch", "transformers") if not self.dependencies.get(name, False)]
@@ -481,24 +710,53 @@ class LocalGRPOTrainer:
     def _load_model(self) -> None:
         torch = self._import_torch()
         transformers = self._import_transformers()
+        self.detected_transformers_version = getattr(transformers, "__version__", None)
+        generation_signature = inspect.signature(transformers.GenerationConfig.__init__).parameters
+        self.remove_invalid_values_supported = "remove_invalid_values" in generation_signature
+        self.renormalize_logits_supported = "renormalize_logits" in generation_signature
         self.device = torch.device("cuda")
-        capability_major = torch.cuda.get_device_capability()[0]
-        dtype = torch.bfloat16 if capability_major >= 8 else torch.float16
+        self.sampling_device = self.device
+        self.device_capability_major = torch.cuda.get_device_capability()[0]
+        self.device_name = torch.cuda.get_device_name(0)
+        dtype = torch.bfloat16 if self.device_capability_major >= 8 else torch.float16
         self.dtype_name = "bfloat16" if dtype == torch.bfloat16 else "float16"
+        self.training_dtype_name = self.dtype_name
+        self.sampling_dtype_name = self.dtype_name
 
         self.tokenizer = transformers.AutoTokenizer.from_pretrained(self.args.model, use_fast=True)
         if self.tokenizer.pad_token_id is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
+        self.sampling_tokenizer = self.tokenizer
 
         self.model = transformers.AutoModelForCausalLM.from_pretrained(
             self.args.model,
             torch_dtype=dtype,
             low_cpu_mem_usage=True,
         ).to(self.device)
+        self.sampling_model = self.model
         self.model.train()
         self.model.config.use_cache = False
         if hasattr(self.model, "gradient_checkpointing_enable"):
             self.model.gradient_checkpointing_enable()
+        self.generation_safety_flags = {
+            "hf_safe_generation": self.hf_safe_generation,
+            "use_safe_sampling": self.use_safe_sampling,
+            "remove_invalid_values": self.remove_invalid_values_supported,
+            "renormalize_logits": self.renormalize_logits_supported,
+            "training_dtype": self.training_dtype_name,
+            "sampling_dtype": self.sampling_dtype_name,
+            "dedicated_sampling_model": False,
+        }
+        self.latest_generation_support_flags = {
+            "remove_invalid_values": self.remove_invalid_values_supported,
+            "renormalize_logits": self.renormalize_logits_supported,
+        }
+        self.latest_generation_sampling_dtype_name = self.sampling_dtype_name
+        self.latest_generation_sampling_device_name = self.sampling_device.type if self.sampling_device is not None else None
+        self.latest_generation_device_capability_major = self.device_capability_major
+        self.latest_generation_device_name = self.device_name
+        self.latest_generation_hf_safe = self.hf_safe_generation
+        self.latest_generation_transformers_version = self.detected_transformers_version
         self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=self.args.learning_rate)
 
     def _import_torch(self):
@@ -547,12 +805,16 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-prompt-tokens", type=int, default=1536)
     parser.add_argument("--temperature", type=float, default=0.9)
     parser.add_argument("--top-p", type=float, default=0.95)
+    parser.add_argument("--action-temperature", type=float, default=ACTION_GENERATION_TEMPERATURE)
+    parser.add_argument("--action-top-p", type=float, default=ACTION_GENERATION_TOP_P)
+    parser.add_argument("--action-max-new-tokens", type=int, default=ACTION_GENERATION_MAX_NEW_TOKENS)
+    parser.add_argument("--disable-training-candidate-choice", action="store_true", help="Disable candidate-choice prompting for the local GRPO training loop only.")
     parser.add_argument("--max-continuation-steps", type=int, default=64)
     parser.add_argument("--max-actions", type=int, default=None)
     parser.add_argument("--save-model-dir", default="")
     parser.add_argument("--sanity-check", action="store_true", help="Validate dependencies/GPU reporting without running training.")
     parser.add_argument("--format-check", action="store_true", help="Validate action JSON parsing, repair, and candidate-choice scaffolding.")
-    parser.add_argument("--candidate-choice", action="store_true", help="Ask the model to choose among generated valid candidate actions during training.")
+    parser.add_argument("--candidate-choice", action="store_true", default=None, help="Ask the model to choose among generated valid candidate actions during training.")
     parser.add_argument("--sample-model-actions", action="store_true", help="During --format-check, sample the selected model if CUDA/dependencies are available.")
     parser.add_argument("--warmstart-data", action="store_true", help="Generate ImprovedPolicy SFT action-format data before GRPO.")
     parser.add_argument("--warmstart-output", default="", help="Optional path for --warmstart-data JSONL output.")
@@ -565,6 +827,10 @@ def extended_dependency_status() -> dict[str, bool]:
     for module_name in ("torch", "peft"):
         status[module_name] = importlib.util.find_spec(module_name) is not None
     return status
+
+
+def _is_hf_job_environment() -> bool:
+    return any(bool(os.environ.get(name)) for name in HF_JOB_ENV_VARS)
 
 
 def safe_parse_action(
@@ -611,6 +877,75 @@ def _training_rate(training_log: list[dict[str, Any]], key: str) -> float:
         for sample in episode.get("sample_parse_results", [])
     ]
     return _rate(values)
+
+
+def _error_code_counts(candidates: list[dict[str, Any]]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for candidate in candidates:
+        error_code = candidate.get("parse", {}).get("error_code") or "valid"
+        counts[error_code] = counts.get(error_code, 0) + 1
+    return counts
+
+
+def _candidate_failure_examples(candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    examples: list[dict[str, Any]] = []
+    for candidate in candidates:
+        parse_info = candidate.get("parse", {})
+        if parse_info.get("valid_action_shape"):
+            continue
+        examples.append(
+            {
+                "error_code": parse_info.get("error_code"),
+                "notes": parse_info.get("notes", []),
+                "raw_text": candidate.get("raw_text"),
+                "prompt_hash": candidate.get("prompt_hash"),
+                "prompt_preview": candidate.get("prompt_preview"),
+            }
+        )
+        if len(examples) >= FAILED_EXAMPLE_LIMIT:
+            break
+    return examples
+
+
+def _candidate_flag_rate(candidates: list[dict[str, Any]], key: str) -> float:
+    return _rate(candidate.get("parse", {}).get(key) for candidate in candidates)
+
+
+def _parser_error_code_counts(training_log: list[dict[str, Any]]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for episode in training_log:
+        for error_code, value in episode.get("parser_error_code_counts", {}).items():
+            counts[error_code] = counts.get(error_code, 0) + int(value)
+    return dict(sorted(counts.items(), key=lambda item: (-item[1], item[0])))
+
+
+def _failed_parse_examples(training_log: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    examples: list[dict[str, Any]] = []
+    for episode in training_log:
+        for example in episode.get("failed_parse_examples", []):
+            examples.append({"episode": episode.get("episode"), **example})
+            if len(examples) >= FAILED_EXAMPLE_LIMIT:
+                return examples
+    return examples
+
+
+def _length_stats(training_log: list[dict[str, Any]], key: str) -> dict[str, int]:
+    values = [int(episode.get(key, 0) or 0) for episode in training_log if episode.get(key) is not None]
+    if not values:
+        return {"min": 0, "max": 0, "mean": 0}
+    return {
+        "min": min(values),
+        "max": max(values),
+        "mean": round(sum(values) / len(values)),
+    }
+
+
+def _prompt_length_stats(training_log: list[dict[str, Any]]) -> dict[str, int]:
+    return _length_stats(training_log, "prompt_char_length")
+
+
+def _completion_length_stats(training_log: list[dict[str, Any]]) -> dict[str, int]:
+    return _length_stats(training_log, "completion_token_length")
 
 
 def _training_warnings(reward_history: list[float], training_log: list[dict[str, Any]]) -> list[str]:
