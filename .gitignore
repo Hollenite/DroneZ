@@ -23,3 +23,6 @@ outputs/
 *.pth
 *.gguf
 *.ckpt
+*.log
+logs/
+build/

@@ -26,3 +26,5 @@ outputs/
 *.pyd
 .venv/
 venv/
+*.log
+logs/
