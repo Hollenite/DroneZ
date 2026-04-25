@@ -25,6 +25,8 @@ DroneZ exposes the core environment loop:
 
 The agent is not doing low-level flight control. It is acting as a mission-level fleet operations controller.
 
+That distinction is the core product story. Modern drones are hybrid systems: PID and flight-control logic keep the aircraft stable, sensor fusion and Kalman-style estimation clean up noisy state, GPS navigation handles waypoint movement, and rule-based safety handles emergencies. DroneZ sits above that stack. It is the AI/control-tower layer for fleet assignment, route adaptation, charging decisions, recovery, and mission optimization.
+
 ## Action Space
 
 DroneZ supports actions such as:
@@ -95,9 +97,11 @@ The original training prompt asked a small model to emit arbitrary nested JSON f
 - early candidate-choice mode such as `{"choice": 2}`
 - SFT data from improved-policy traces before online RL
 
-## Demo Replay UI
+## Advanced Control Tower UI
 
-The browser replay UI uses real JSON traces from the environment. It shows sectors, drones, orders, hazards, reward evolution, recent events, and reward breakdowns. It is not a disconnected animation.
+The browser replay UI uses real JSON traces from the environment. It now presents the project as a high-tech hybrid-drone control tower instead of a toy grid. It shows a 2.5D procedural city, curved route corridors, drones, orders, chargers, weather overlays, no-fly zones, simulated telemetry, reward evolution, recent events, and control tower state. It is not a disconnected animation.
+
+The extra route geometry, wind values, sensor indicators, and control-layer labels are derived visualization metadata. They help explain the simulated mission, but they are not real GPS or aircraft sensor streams.
 
 Run locally:
 

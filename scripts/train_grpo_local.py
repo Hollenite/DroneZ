@@ -649,6 +649,62 @@ def _parse_csv_list(raw: str, *, fallback: list[str]) -> list[str]:
     return items or fallback
 
 
+def write_blocked_training_artifacts(args: argparse.Namespace, reason: str) -> dict[str, Path]:
+    output_dir = Path(args.output_dir)
+    trainer = LocalGRPOTrainer(args)
+    payload = {
+        "mode": "local-grpo",
+        "status": "blocked",
+        "training_executed": False,
+        "note": (
+            "A real candidate-choice GRPO command was requested, but the run stopped before "
+            "model loading or optimizer updates. This is an honest blocked-run artifact, not "
+            "a training success claim."
+        ),
+        "reason": reason,
+        "selected_model": args.model,
+        "candidate_choice": args.candidate_choice,
+        "curriculum": trainer.tasks,
+        "eval_tasks": trainer.eval_tasks,
+        "dependency_status": trainer.dependencies,
+        "device": trainer._device_summary(),
+        "hyperparameters": {
+            "seed": args.seed,
+            "episodes": args.episodes,
+            "group_size": args.group_size,
+            "learning_rate": args.learning_rate,
+            "max_new_tokens": args.max_new_tokens,
+            "max_prompt_tokens": args.max_prompt_tokens,
+            "temperature": args.temperature,
+            "top_p": args.top_p,
+            "max_continuation_steps": args.max_continuation_steps,
+            "max_actions": args.max_actions,
+        },
+        "reward_improved": None,
+        "mean_reward_delta": None,
+        "warnings": [
+            "No optimizer updates were run.",
+            "No eval_before/eval_after reward comparison exists for this blocked run.",
+            "Run the same command on a CUDA GPU machine to produce real training evidence.",
+        ],
+    }
+    eval_placeholder = {
+        "status": "not_run",
+        "training_executed": False,
+        "reason": reason,
+        "note": "Evaluation was not run because candidate-choice GRPO did not start.",
+    }
+    output_dir.mkdir(parents=True, exist_ok=True)
+    return {
+        "training_metrics": write_json(output_dir / "training_metrics.json", payload),
+        "eval_before": write_json(output_dir / "eval_before.json", eval_placeholder),
+        "eval_after": write_json(
+            output_dir / "eval_after.json",
+            {**eval_placeholder, "mean_reward_delta": None},
+        ),
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -682,6 +738,11 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Wrote {result_paths['eval_after']}")
         return 0
     except RuntimeError as exc:
+        if args.real_train:
+            result_paths = write_blocked_training_artifacts(args, str(exc))
+            print(f"Wrote blocked run artifact {result_paths['training_metrics']}", file=sys.stderr)
+            print(f"Wrote blocked run artifact {result_paths['eval_before']}", file=sys.stderr)
+            print(f"Wrote blocked run artifact {result_paths['eval_after']}", file=sys.stderr)
         print(f"Local GRPO training is not ready: {exc}", file=sys.stderr)
         return 2
 

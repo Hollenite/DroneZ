@@ -2,11 +2,15 @@
 
 ## 30-Second Pitch
 
-DroneZ is an OpenEnv environment where an LLM learns to operate a fleet of delivery drones at the mission-control level. Instead of flying a single drone, it must assign deliveries, reroute around hazards, manage battery and charging, handle failed drops, and prioritize urgent orders under real operational constraints.
+DroneZ is a hybrid drone fleet operations RL environment. It does not train propellers. It trains and evaluates an LLM-style mission controller that assigns drones, reroutes around hazards, manages charging, handles failed drops, and prioritizes urgent orders under real operational constraints.
+
+## One-Line Judge Framing
+
+DroneZ shows the realistic hybrid model: PID, sensor fusion, GPS navigation, and safety rules keep drones stable, while RL/AI handles high-level fleet decisions through a control tower or parent server.
 
 ## 60-Second Pitch
 
-Most drone demos are about flight. Ours is about operations. DroneZ simulates what actually makes delivery systems hard: dynamic weather, shifting no-fly zones, urgent orders, charger contention, battery risk, failed deliveries, and a heterogeneous fleet. We built it as a step-by-step OpenEnv environment so an LLM agent can act inside it, get reward feedback, and improve. We also built deterministic traces and a replay UI so judges can see not only the score change, but exactly what the controller decided and why.
+Most drone demos are about flight. Ours is about operations. DroneZ simulates what actually makes delivery systems hard: dynamic weather, shifting no-fly zones, urgent orders, charger contention, battery risk, failed deliveries, and a heterogeneous fleet. We built it as a step-by-step OpenEnv environment so an LLM agent can act inside it, get reward feedback, and improve. We also built deterministic traces and an advanced control-tower replay UI so judges can see the drone routes, telemetry, weather, RL decision, reward impact, and hybrid control stack at the same time.
 
 ## 2-Minute Stage Pitch
 
@@ -14,9 +18,11 @@ DroneZ tackles a real capability gap in LLM agents: persistent operational contr
 
 Our environment models a professional drone-delivery control room. The agent sees fleet state, order backlog, sector hazards, no-fly zones, charger occupancy, and recent disruptions. It can assign drones, reroute flights, send drones to charge, hold a risky zone, fall back to lockers, and recover from failed drops.
 
+This is a hybrid drone system, not a pure-RL aircraft controller. Low-level drone systems handle PID stability, sensor fusion, state estimation, GPS navigation, and safety logic. DroneZ focuses on high-level RL/AI decisions: fleet assignment, route adaptation, charging, recovery, and mission optimization. The parent-server control tower is the AI decision layer companies would customize and validate before connecting to real aircraft systems.
+
 The reward system is decomposed and judge-explainable. We reward successful deliveries, urgent deliveries, meeting deadlines, safe reroutes, battery-aware operation, utilization, and recovery. We penalize missed deadlines, unsafe routing, battery critical states, invalid actions, unnecessary reroutes, charging misuse, and looping. We also explicitly guard against reward hacking by capping invalid actions and action count and by making safety reroutes distinct from unnecessary reroutes.
 
-For evaluation, we compare random, naive, heuristic, and improved policies and export JSON, CSV, plots, and trace logs. For the demo, we replay real traces in the browser so you can see drones, sectors, hazards, orders, and rewards evolve over time. The point is not a pretty animation. The point is proving that the controller learned or improved inside a meaningful environment.
+For evaluation, we compare random, naive, heuristic, and improved policies and export JSON, CSV, plots, and trace logs. For the demo, we replay real traces in the browser so you can see drones, sectors, hazards, telemetry, control-tower state, route changes, orders, and rewards evolve over time. The deterministic improved policy proves the environment can distinguish good and bad decisions. The GRPO attempt revealed the next real research bottleneck: action-format learning. Our next step is SFT warm start plus candidate-choice GRPO.
 
 ## Technical Judge Q&A
 
@@ -24,9 +30,13 @@ For evaluation, we compare random, naive, heuristic, and improved policies and e
 
 It is learning operational sequencing under delayed consequences: which drone to assign, when to reroute, when to hold a zone, when to recover with lockers, and how to manage battery and deadlines across multiple assets.
 
+### Is DroneZ training propellers?
+
+No. DroneZ is mission-level drone fleet control. Classical drone systems handle stability and low-level movement. The RL/AI policy handles fleet and mission decisions from the control tower layer.
+
 ### Why is this not just a toy drone simulator?
 
-Because the hard part is not movement. The hard part is world state, disruptions, tradeoffs, and delayed reward. DroneZ is mission control, not joystick control.
+Because the hard part is not toy movement. The hard part is world state, disruptions, tradeoffs, delayed reward, safety, and parent-server decisions across a fleet. DroneZ is mission control, not joystick control.
 
 ### How do rewards avoid hacking?
 
@@ -100,3 +110,7 @@ It revealed an action-format bottleneck. The model did not reliably emit valid D
 ### 7. Is this controlling real drone motors?
 
 No. DroneZ is mission-level fleet control. Real drones still need certified low-level flight stacks: PID control, GPS/IMU fusion, Kalman filtering, geofencing, hardware failsafes, and aviation-grade validation.
+
+### 8. What should judges notice in the new UI?
+
+The demo is trace-driven, not fake. It shows a professional control tower with a 2.5D city map, curved route corridors, no-fly/weather overlays, simulated telemetry, control tower queues, RL recommendations, and a clear split between low-level drone control and high-level RL mission decisions.

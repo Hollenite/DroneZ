@@ -13,8 +13,9 @@
           <p class="eyebrow">DroneZ OpenEnv</p>
           <h1>OpenEnv RL Platform for Autonomous Drone Fleet Operations</h1>
           <p class="subhead">
-            A professional, trace-driven training environment for LLM mission controllers:
-            dispatch, reroute, charge, recover, and prioritize drone fleets under real-world constraints.
+            A cinematic, trace-driven hybrid-drone control tower for LLM mission controllers:
+            dispatch, reroute, charge, recover, and prioritize fleets while classical flight systems
+            handle stability, sensing, GPS, and safety.
           </p>
           <div class="hero-actions">
             <a class="cta primary" href="#simulator">Run Simulation</a>
@@ -59,6 +60,10 @@
         <label>
           Speed
           <input id="speedRange" type="range" min="250" max="2000" step="250" value="850" />
+        </label>
+        <label class="toggle-control">
+          Stage Demo Mode
+          <input id="stageModeToggle" type="checkbox" />
         </label>
         <div class="button-row">
           <button id="loadBtn">Load</button>
@@ -128,13 +133,19 @@
           </div>
           <div class="progress-shell"><div id="progressBar" class="progress-bar"></div></div>
           <div id="errorPanel" class="error-panel" hidden></div>
-          <svg id="mapSvg" viewBox="0 0 980 640" aria-label="DroneZ city replay map"></svg>
+          <div class="mission-strip">
+            <span>Simulated telemetry derived from DroneZ traces</span>
+            <span>Hybrid stack: PID + sensor fusion + safety rules + RL mission policy</span>
+          </div>
+          <svg id="mapSvg" viewBox="0 0 980 680" aria-label="DroneZ city replay map"></svg>
           <div class="legend">
             <span><i class="dot drone"></i> Drone</span>
             <span><i class="dot urgent"></i> Urgent / medical order</span>
             <span><i class="dot normal"></i> Normal order</span>
             <span><i class="dot hazard"></i> No-fly / storm / paused</span>
             <span><i class="dot charger"></i> Charger</span>
+            <span><i class="dot route-safe"></i> Safe route</span>
+            <span><i class="dot route-active"></i> Active route</span>
           </div>
         </section>
 
@@ -147,6 +158,21 @@
           <section class="panel metrics">
             <h2>Live Metrics</h2>
             <div id="metricsGrid" class="metric-grid"></div>
+          </section>
+
+          <section class="panel telemetry-card">
+            <h2>Drone Telemetry</h2>
+            <div id="telemetryPanel" class="telemetry-stack"></div>
+          </section>
+
+          <section class="panel environment-card">
+            <h2>Weather / Airspace</h2>
+            <div id="environmentPanel" class="environment-stack"></div>
+          </section>
+
+          <section class="panel tower-card">
+            <h2>Control Tower</h2>
+            <div id="towerPanel" class="tower-stack"></div>
           </section>
 
           <section class="panel action-card">
@@ -168,17 +194,33 @@
             <h2>Frame Summary</h2>
             <pre id="frameSummary" class="summary-box"></pre>
           </section>
+
+          <section class="panel learn-card">
+            <h2>Explain Mode</h2>
+            <div id="learnPanel" class="learn-stack"></div>
+          </section>
         </aside>
       </main>
 
       <section class="story-grid">
         <article class="story-card">
+          <div class="section-kicker">Hybrid Control Stack</div>
+          <h2>Classical flight control below, RL mission decisions above</h2>
+          <p>
+            DroneZ does not ask an LLM to control propellers. PID, sensor fusion, Kalman-style state
+            estimation, GPS navigation, and safety rules represent the low-level drone layer. RL/AI
+            controls mission-level decisions: assignment, routing, charging, recovery, and priority.
+          </p>
+          <div class="loop-row">
+            <span>PID stability</span><span>Sensor fusion</span><span>Safety rules</span><span>RL assignment</span><span>Control tower</span>
+          </div>
+        </article>
+        <article class="story-card">
           <div class="section-kicker">RL Loop</div>
           <h2>Observation → Action → Step → Reward → Learn</h2>
           <p>
-            DroneZ exposes an OpenEnv-style loop where the LLM sees fleet state, order urgency,
-            weather/no-fly constraints, charger queues, and reward feedback. It outputs one mission-level
-            JSON action at a time, then the environment executes and scores the outcome.
+            The OpenEnv loop is still the core: observe drone/order/weather/battery state, choose one JSON
+            action, step the environment, receive reward, and improve the policy over many rollouts.
           </p>
           <div class="loop-row">
             <span>Observation</span><span>Action JSON</span><span>Environment Step</span><span>Reward</span><span>Training Signal</span>

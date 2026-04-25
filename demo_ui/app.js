@@ -1,11 +1,11 @@
 const ZONES = {
-  hub: { x: 410, y: 255, w: 160, h: 120, label: "Hub" },
-  Z1: { x: 80, y: 70, w: 170, h: 125, label: "Z1 Downtown" },
-  Z2: { x: 405, y: 60, w: 170, h: 125, label: "Z2 Hospital" },
-  Z3: { x: 725, y: 80, w: 170, h: 125, label: "Z3 East" },
-  Z4: { x: 80, y: 405, w: 170, h: 125, label: "Z4 Market" },
-  Z5: { x: 405, y: 430, w: 170, h: 125, label: "Z5 Campus" },
-  Z6: { x: 725, y: 410, w: 170, h: 125, label: "Z6 Suburb" },
+  hub: { x: 455, y: 325, w: 170, h: 120, label: "Central Hub" },
+  Z1: { x: 115, y: 105, w: 185, h: 125, label: "Z1 Downtown" },
+  Z2: { x: 450, y: 90, w: 190, h: 130, label: "Z2 Hospital" },
+  Z3: { x: 780, y: 120, w: 185, h: 125, label: "Z3 East" },
+  Z4: { x: 120, y: 500, w: 185, h: 125, label: "Z4 Market" },
+  Z5: { x: 455, y: 530, w: 190, h: 125, label: "Z5 Campus" },
+  Z6: { x: 785, y: 500, w: 185, h: 125, label: "Z6 Suburb" },
 };
 
 const FALLBACK_FRAME = {
@@ -58,6 +58,7 @@ const $ = (id) => document.getElementById(id);
 const scenarioSelect = $("scenarioSelect");
 const policySelect = $("policySelect");
 const speedRange = $("speedRange");
+const stageModeToggle = $("stageModeToggle");
 const loadBtn = $("loadBtn");
 const playBtn = $("playBtn");
 const pauseBtn = $("pauseBtn");
@@ -76,6 +77,10 @@ const frameIndicator = $("frameIndicator");
 const progressBar = $("progressBar");
 const scenarioBadge = $("scenarioBadge");
 const policyBadge = $("policyBadge");
+const telemetryPanel = $("telemetryPanel");
+const environmentPanel = $("environmentPanel");
+const towerPanel = $("towerPanel");
+const learnPanel = $("learnPanel");
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -87,8 +92,16 @@ function escapeHtml(value) {
 }
 
 function traceCandidates(scenario, policy) {
-  const file = `${scenario}_${policy}_trace.json`;
-  return [`../artifacts/traces/${file}`, `/artifacts/traces/${file}`, `artifacts/traces/${file}`];
+  const enriched = `${scenario}_${policy}_enriched.json`;
+  const raw = `${scenario}_${policy}_trace.json`;
+  return [
+    `../artifacts/traces/${enriched}`,
+    `/artifacts/traces/${enriched}`,
+    `artifacts/traces/${enriched}`,
+    `../artifacts/traces/${raw}`,
+    `/artifacts/traces/${raw}`,
+    `artifacts/traces/${raw}`,
+  ];
 }
 
 async function fetchFirstJson(urls) {
@@ -188,15 +201,23 @@ function frameInfo(frame = currentFrame()) {
   return frame?.info || frame?.state?.info || {};
 }
 
+function frameVisualization(frame = currentFrame()) {
+  return frame?.visualization || null;
+}
+
 function render() {
   renderBadges();
   renderMap();
   renderMetrics();
+  renderTelemetry();
+  renderEnvironment();
+  renderTower();
   renderComparison();
   renderRewardBreakdown();
   renderEvents();
   renderSummary();
   renderAction();
+  renderLearn();
 }
 
 function renderBadges() {
@@ -207,6 +228,7 @@ function renderBadges() {
   const progress = state.frames.length <= 1 ? 100 : (state.currentFrameIndex / (state.frames.length - 1)) * 100;
   progressBar.style.width = `${progress}%`;
   document.body.classList.toggle("fallback-mode", !state.traceLoaded);
+  document.body.classList.toggle("stage-mode", Boolean(stageModeToggle?.checked));
 }
 
 function zoneCenter(zoneId) {
@@ -226,15 +248,23 @@ function sectorClass(sector) {
 function renderMap() {
   const frame = currentFrame();
   const observation = frameObservation(frame);
+  const visual = frameVisualization(frame);
   if (!observation) {
     mapSvg.innerHTML = `<text x="40" y="80" fill="#c75146">No observation available for this frame.</text>`;
     return;
   }
 
   const sectorsById = new Map((observation.city?.sectors || []).map((sector) => [sector.zone_id, sector]));
-  const sectors = Object.keys(ZONES).map((zoneId) => sectorsById.get(zoneId) || {
+  const sectors = visual?.zone_layout || Object.keys(ZONES).map((zoneId) => sectorsById.get(zoneId) || {
     zone_id: zoneId,
+    label: ZONES[zoneId]?.label || zoneId,
+    x: ZONES[zoneId]?.x,
+    y: ZONES[zoneId]?.y,
+    w: ZONES[zoneId]?.w,
+    h: ZONES[zoneId]?.h,
     weather: "clear",
+    wind_speed_kph: 10,
+    risk_score: 0,
     congestion_score: 0,
     is_no_fly: false,
     operations_paused: false,
@@ -244,6 +274,7 @@ function renderMap() {
   const charging = observation.charging || [];
   const activeNoFly = new Set(observation.city?.active_no_fly_zones || []);
   const heldZones = new Set(observation.city?.held_zones || []);
+  const telemetry = visual?.drone_telemetry || [];
 
   const roads = [
     ["hub", "Z1"], ["hub", "Z2"], ["hub", "Z3"], ["hub", "Z4"], ["hub", "Z5"], ["hub", "Z6"],
@@ -254,28 +285,60 @@ function renderMap() {
     return `<line class="road" x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}" />`;
   }).join("");
 
+  const cityBlocks = Object.entries(ZONES).map(([zoneId, zone], index) => {
+    const center = zoneCenter(zoneId);
+    const height = zoneId === "hub" ? 54 : 20 + (index % 4) * 12;
+    return `
+      <g class="building">
+        <polygon points="${center.x - 42},${center.y + 58} ${center.x + 34},${center.y + 37} ${center.x + 58},${center.y + 52} ${center.x - 16},${center.y + 74}" />
+        <polygon points="${center.x + 34},${center.y + 37} ${center.x + 58},${center.y + 52} ${center.x + 58},${center.y + 52 - height} ${center.x + 34},${center.y + 37 - height}" />
+        <polygon points="${center.x - 42},${center.y + 58} ${center.x + 34},${center.y + 37} ${center.x + 34},${center.y + 37 - height} ${center.x - 42},${center.y + 58 - height}" />
+      </g>
+    `;
+  }).join("");
+
   const zoneMarkup = sectors.map((sector) => {
-    const zone = ZONES[sector.zone_id] || ZONES.hub;
+    const zone = {
+      ...(ZONES[sector.zone_id] || ZONES.hub),
+      ...sector,
+    };
     const badges = [
       sector.is_no_fly || activeNoFly.has(sector.zone_id) ? "NO-FLY" : null,
       sector.operations_paused || heldZones.has(sector.zone_id) ? "PAUSED" : null,
       sector.weather && sector.weather !== "clear" ? sector.weather.replace("_", " ") : null,
       Number(sector.congestion_score || 0) >= 0.7 ? "CONGESTED" : null,
     ].filter(Boolean);
+    const risk = Math.round(Number(sector.risk_score || 0) * 100);
 
     return `
       <g class="${sectorClass(sector)}">
         <rect x="${zone.x}" y="${zone.y}" width="${zone.w}" height="${zone.h}" rx="22" />
-        <text class="zone-title" x="${zone.x + 16}" y="${zone.y + 28}">${escapeHtml(zone.label)}</text>
-        <text class="zone-detail" x="${zone.x + 16}" y="${zone.y + 52}">weather: ${escapeHtml(sector.weather || "clear")}</text>
-        <text class="zone-detail" x="${zone.x + 16}" y="${zone.y + 72}">congestion: ${Number(sector.congestion_score || 0).toFixed(2)}</text>
-        <text class="zone-detail" x="${zone.x + 16}" y="${zone.y + 92}">orders: ${orders.filter((order) => order.zone_id === sector.zone_id && order.status !== "delivered").length}</text>
+        <text class="zone-title" x="${Number(zone.x) + 16}" y="${Number(zone.y) + 28}">${escapeHtml(zone.label)}</text>
+        <text class="zone-detail" x="${Number(zone.x) + 16}" y="${Number(zone.y) + 52}">weather: ${escapeHtml(sector.weather || "clear")} · wind ${escapeHtml(sector.wind_speed_kph || 0)} kph</text>
+        <text class="zone-detail" x="${Number(zone.x) + 16}" y="${Number(zone.y) + 72}">risk: ${risk}% · congestion ${Number(sector.congestion_score || 0).toFixed(2)}</text>
+        <text class="zone-detail" x="${Number(zone.x) + 16}" y="${Number(zone.y) + 92}">orders: ${orders.filter((order) => order.zone_id === sector.zone_id && order.status !== "delivered").length}</text>
         ${badges.map((badge, index) => `<text class="zone-badge" x="${zone.x + 16}" y="${zone.y + 113 + index * 15}">${escapeHtml(badge)}</text>`).join("")}
       </g>
     `;
   }).join("");
 
-  const pathMarkup = fleet.filter((drone) => drone.target_zone).map((drone, index) => {
+  const pathMarkup = visual?.route_segments?.length ? visual.route_segments.map((segment, index) => {
+    const points = segment.points || [];
+    const path = points.length >= 4
+      ? `M ${points[0].x},${points[0].y} C ${points[1].x},${points[1].y} ${points[2].x},${points[2].y} ${points[3].x},${points[3].y}`
+      : "";
+    if (!path) return "";
+    const routeClass = `flight-path route-${segment.route_color || "purple"}`;
+    return `
+      <g class="route-group">
+        <path class="${routeClass}" d="${path}" />
+        <circle class="path-pulse route-${segment.route_color || "purple"}" r="6">
+          <animateMotion dur="${2.8 + index * 0.25}s" repeatCount="indefinite" path="${path}" />
+        </circle>
+        <text class="route-label" x="${points[1].x}" y="${points[1].y - 12}">${escapeHtml(segment.route_type || "route")}</text>
+      </g>
+    `;
+  }).join("") : fleet.filter((drone) => drone.target_zone).map((drone, index) => {
     const p1 = zoneCenter(drone.current_zone || "hub");
     const p2 = zoneCenter(drone.target_zone || "hub");
     const safe = drone.active_corridor === "safe";
@@ -319,20 +382,28 @@ function renderMap() {
   }).join("");
 
   const droneMarkup = fleet.map((drone, index) => {
+    const droneTelemetry = telemetry.find((item) => item.drone_id === drone.drone_id);
     const zone = ZONES[drone.current_zone] || ZONES.hub;
     const offsetX = 36 + (index % 3) * 43;
     const offsetY = 42 + Math.floor(index / 3) * 36;
-    const x = zone.x + offsetX;
-    const y = zone.y + offsetY;
+    const x = droneTelemetry?.x ?? zone.x + offsetX;
+    const y = droneTelemetry?.y ?? zone.y + offsetY;
     const risk = drone.health_risk === "critical" || Number(drone.battery || 0) <= 20 ? "critical" : drone.health_risk === "high" ? "warning" : "ok";
     const batteryWidth = Math.max(4, Math.min(34, Number(drone.battery || 0) * 0.34));
+    const altitude = droneTelemetry?.altitude_m ?? 80;
+    const speed = droneTelemetry?.speed_kph ?? 0;
     return `
       <g class="drone ${risk}">
-        <circle cx="${x}" cy="${y}" r="17" />
+        <circle class="drone-aura" cx="${x}" cy="${y}" r="29" />
+        <path class="drone-body" d="M ${x - 17},${y} L ${x},${y - 13} L ${x + 17},${y} L ${x},${y + 13} Z" />
+        <line class="drone-rotor" x1="${x - 28}" y1="${y - 15}" x2="${x - 8}" y2="${y - 8}" />
+        <line class="drone-rotor" x1="${x + 8}" y1="${y - 8}" x2="${x + 28}" y2="${y - 15}" />
+        <line class="drone-rotor" x1="${x - 28}" y1="${y + 15}" x2="${x - 8}" y2="${y + 8}" />
+        <line class="drone-rotor" x1="${x + 8}" y1="${y + 8}" x2="${x + 28}" y2="${y + 15}" />
         <text class="drone-label" x="${x}" y="${y + 4}" text-anchor="middle">${escapeHtml(drone.drone_id)}</text>
         <rect class="battery-shell" x="${x - 18}" y="${y + 22}" width="36" height="7" rx="3" />
         <rect class="battery-fill" x="${x - 17}" y="${y + 23}" width="${batteryWidth}" height="5" rx="2" />
-        <text class="drone-meta" x="${x}" y="${y + 42}" text-anchor="middle">${escapeHtml(drone.status)} · ${drone.battery}%</text>
+        <text class="drone-meta" x="${x}" y="${y + 43}" text-anchor="middle">${escapeHtml(drone.status)} · ${drone.battery}% · ${altitude}m · ${speed}kph</text>
         <title>${drone.drone_id}: ${drone.status}, zone ${drone.current_zone}, target ${drone.target_zone || "none"}, assigned ${drone.assigned_order_id || "none"}</title>
       </g>
     `;
@@ -343,9 +414,14 @@ function renderMap() {
       <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
         <feDropShadow dx="0" dy="8" stdDeviation="9" flood-color="#132217" flood-opacity="0.16" />
       </filter>
+      <pattern id="cityGrid" width="44" height="44" patternUnits="userSpaceOnUse">
+        <path d="M 44 0 L 0 0 0 44" fill="none" stroke="rgba(111, 255, 213, 0.07)" stroke-width="1" />
+      </pattern>
     </defs>
-    <rect class="map-bg" x="0" y="0" width="980" height="640" rx="32" />
+    <rect class="map-bg" x="0" y="0" width="980" height="680" rx="32" />
+    <rect class="map-grid" x="18" y="18" width="944" height="644" rx="28" />
     ${roads}
+    ${cityBlocks}
     ${pathMarkup}
     ${zoneMarkup}
     ${chargingMarkup}
@@ -393,6 +469,177 @@ function renderMetrics() {
       <div class="metric-value">${escapeHtml(value)}</div>
     </div>
   `).join("");
+}
+
+function formatNumber(value, fallback = "0") {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) return fallback;
+  return Number(value).toFixed(Number(value) % 1 === 0 ? 0 : 1);
+}
+
+function formatPercent(value, fallback = "0%") {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) return fallback;
+  return `${Math.round(Number(value) * 100)}%`;
+}
+
+function statusTone(value) {
+  const normalized = String(value || "").toLowerCase();
+  if (["critical", "blocked", "high", "lost", "unsafe"].some((term) => normalized.includes(term))) return "danger";
+  if (["warning", "caution", "degraded", "queued", "moderate"].some((term) => normalized.includes(term))) return "warn";
+  return "ok";
+}
+
+function renderTelemetry() {
+  if (!telemetryPanel) return;
+  const observation = frameObservation();
+  const visual = frameVisualization();
+  const fleet = observation?.fleet || [];
+  const telemetry = visual?.drone_telemetry?.length
+    ? visual.drone_telemetry
+    : fleet.map((drone, index) => ({
+        drone_id: drone.drone_id,
+        status: drone.status,
+        zone: drone.current_zone,
+        altitude_m: drone.status === "idle" ? 0 : 70 + index * 12,
+        speed_kph: drone.status === "idle" ? 0 : 32 + index * 5,
+        battery: drone.battery,
+        wind_exposure: drone.health_risk || "low",
+        payload: drone.assigned_order_id ? "assigned" : "none",
+        gps_lock: true,
+        imu_status: "nominal",
+        camera_status: "ready",
+        lidar_status: "ready",
+        thermal_status: "ready",
+        sensor_fusion_confidence: 0.94,
+        health_state: drone.health_risk || "low",
+        assigned_order: drone.assigned_order_id || "none",
+        eta_steps: drone.eta_steps ?? "n/a",
+        current_action: currentFrame()?.action?.action || "monitor",
+        route_risk: drone.health_risk || "low",
+      }));
+
+  telemetryPanel.innerHTML = `
+    <p class="panel-note">Simulated visualization telemetry derived from environment traces, not real aircraft sensor streams.</p>
+    ${telemetry.map((item) => {
+      const battery = Math.max(0, Math.min(100, Number(item.battery || 0)));
+      const confidence = Math.max(0, Math.min(1, Number(item.sensor_fusion_confidence || 0)));
+      return `
+        <article class="telemetry-unit">
+          <div class="unit-head">
+            <strong>${escapeHtml(item.drone_id)}</strong>
+            <span class="status-chip ${statusTone(item.health_state)}">${escapeHtml(item.health_state || item.status || "nominal")}</span>
+          </div>
+          <div class="unit-grid">
+            <span>Zone</span><b>${escapeHtml(item.zone || item.position_zone || "hub")}</b>
+            <span>Battery</span><b>${battery}%</b>
+            <span>Altitude</span><b>${escapeHtml(formatNumber(item.altitude_m))} m</b>
+            <span>Speed</span><b>${escapeHtml(formatNumber(item.speed_kph))} kph</b>
+            <span>Wind</span><b>${escapeHtml(item.wind_exposure || "low")}</b>
+            <span>ETA</span><b>${escapeHtml(item.eta_steps ?? item.eta ?? "n/a")}</b>
+            <span>Payload</span><b>${escapeHtml(item.payload ?? (item.payload_kg === undefined ? "none" : `${item.payload_kg} kg`))}</b>
+            <span>Order</span><b>${escapeHtml(item.assigned_order || "none")}</b>
+            <span>Action</span><b>${escapeHtml(item.current_action || "monitor")}</b>
+            <span>Route risk</span><b>${escapeHtml(item.route_risk || "nominal")}</b>
+          </div>
+          <div class="bar-row"><span>Battery</span><i style="--w:${battery}%"></i></div>
+          <div class="bar-row"><span>Sensor fusion</span><i style="--w:${Math.round(confidence * 100)}%"></i></div>
+          <div class="sensor-line">
+            <span class="${item.gps_lock ? "ok" : "danger"}">GPS ${item.gps_lock ? "lock" : "lost"}</span>
+            <span>${escapeHtml(item.imu_status || "IMU nominal")}</span>
+            <span>${escapeHtml(item.camera_status || "camera ready")}</span>
+            <span>${escapeHtml(item.lidar_status || "LiDAR ready")}</span>
+            <span>${escapeHtml(item.thermal_status || "thermal ready")}</span>
+          </div>
+        </article>
+      `;
+    }).join("")}
+  `;
+}
+
+function renderEnvironment() {
+  if (!environmentPanel) return;
+  const observation = frameObservation();
+  const visual = frameVisualization();
+  const environment = visual?.environment || {};
+  const zones = visual?.zone_layout || observation?.city?.sectors || [];
+  const alerts = environment.alerts || environment.active_alerts || observation?.warnings || observation?.recent_events?.slice(-3) || [];
+  const stormZones = environment.storm_zones || zones.filter((zone) => String(zone.weather || "").includes("storm")).map((zone) => zone.zone_id);
+  const restrictedZones = environment.restricted_zones || observation?.city?.active_no_fly_zones || [];
+  const maxWind = environment.max_wind_kph ?? Math.max(0, ...zones.map((zone) => Number(zone.wind_speed_kph || 0)));
+  const congestion = environment.congestion_index ?? (
+    zones.length ? zones.reduce((sum, zone) => sum + Number(zone.congestion_score || 0), 0) / zones.length : 0
+  );
+
+  environmentPanel.innerHTML = `
+    <div class="environment-grid">
+      <div><span>Weather</span><b>${escapeHtml(environment.dominant_weather || "mixed urban")}</b></div>
+      <div><span>Max wind</span><b>${escapeHtml(formatNumber(maxWind))} kph</b></div>
+      <div><span>Storm zones</span><b>${escapeHtml(stormZones.length ? stormZones.join(", ") : "none")}</b></div>
+      <div><span>No-fly</span><b>${escapeHtml(restrictedZones.length ? restrictedZones.join(", ") : "none")}</b></div>
+      <div><span>Congestion</span><b>${escapeHtml(formatPercent(congestion))}</b></div>
+      <div><span>Dynamic restrictions</span><b>${escapeHtml((environment.dynamic_restrictions || []).join(", ") || "monitored")}</b></div>
+    </div>
+    <div class="alert-stack">
+      ${(alerts.length ? alerts : ["No active environment alerts."]).map((alert) => `<span>${escapeHtml(alert)}</span>`).join("")}
+    </div>
+  `;
+}
+
+function renderTower() {
+  if (!towerPanel) return;
+  const visual = frameVisualization();
+  const tower = visual?.tower || {};
+  const controlLayers = visual?.control_layers || {};
+  const normalizeLayer = (layer, fallback) => {
+    if (Array.isArray(layer)) return layer;
+    if (layer && typeof layer === "object") {
+      return Object.entries(layer).map(([key, value]) => `${key.replaceAll("_", " ")}: ${value}`);
+    }
+    return fallback;
+  };
+  const fleetHealth = tower.fleet_health && typeof tower.fleet_health === "object"
+    ? Object.entries(tower.fleet_health).map(([key, value]) => `${key.replaceAll("_", " ")} ${value}`).join(", ")
+    : tower.fleet_health;
+  const layerGroups = [
+    ["Low-level drone system", normalizeLayer(controlLayers.low_level_drone, ["PID stability", "sensor fusion", "GPS navigation", "safety rules"])],
+    ["High-level RL / AI", normalizeLayer(controlLayers.high_level_rl_ai, ["fleet assignment", "route adaptation", "charging decisions", "reward optimization"])],
+    ["Control tower / parent server", normalizeLayer(controlLayers.control_tower_parent_server || controlLayers.control_tower, ["fleet monitoring", "global route planning", "emergency override", "organization policy"])],
+  ];
+
+  towerPanel.innerHTML = `
+    <div class="tower-status">
+      <div><span>Dispatch queue</span><b>${escapeHtml((tower.dispatch_queue || []).join(", ") || "clear")}</b></div>
+      <div><span>Urgent queue</span><b>${escapeHtml((tower.urgent_queue || []).join(", ") || "clear")}</b></div>
+      <div><span>Override</span><b>${escapeHtml(tower.override_status || "human-on-loop")}</b></div>
+      <div><span>RL recommendation</span><b>${escapeHtml(tower.rl_recommendation || currentFrame()?.action?.action || "monitor")}</b></div>
+      <div><span>Fleet health</span><b>${escapeHtml(fleetHealth || "nominal")}</b></div>
+    </div>
+    <div class="architecture-stack">
+      ${layerGroups.map(([title, items]) => `
+        <article class="architecture-layer">
+          <h3>${escapeHtml(title)}</h3>
+          <div>${items.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}</div>
+        </article>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderLearn() {
+  if (!learnPanel) return;
+  const observation = frameObservation();
+  const frame = currentFrame();
+  const actionName = frame?.action?.action || "initial_state";
+  const reward = frame?.step_reward ?? frame?.reward ?? 0;
+  const droneCount = observation?.fleet?.length || 0;
+  const orderCount = observation?.orders?.length || 0;
+
+  learnPanel.innerHTML = `
+    <div class="learn-step"><b>Observation</b><span>The agent sees ${droneCount} drones, ${orderCount} orders, weather, no-fly zones, chargers, and recent events.</span></div>
+    <div class="learn-step"><b>Action</b><span>Current decision: <strong>${escapeHtml(actionName)}</strong>. This is mission-level control, not motor control.</span></div>
+    <div class="learn-step"><b>Step</b><span>The environment advances one operation step and updates drones, orders, risks, and events.</span></div>
+    <div class="learn-step"><b>Reward</b><span>This step reward is <strong>${escapeHtml(formatNumber(reward))}</strong>. Safety, delivery, battery, deadlines, and invalid actions affect it.</span></div>
+    <div class="learn-step"><b>Learn</b><span>The old RTX 5060 GRPO attempt did not improve because invalid actions dominated. Candidate-choice plus SFT warm start teaches valid actions before RL.</span></div>
+  `;
 }
 
 function renderComparison() {
@@ -489,6 +736,7 @@ nextBtn.addEventListener("click", () => {
 speedRange.addEventListener("change", () => {
   if (state.timerId !== null) playReplay();
 });
+stageModeToggle?.addEventListener("change", render);
 scenarioSelect.addEventListener("change", loadTrace);
 policySelect.addEventListener("change", loadTrace);
 

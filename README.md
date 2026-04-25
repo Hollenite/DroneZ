@@ -28,6 +28,20 @@ The platform boundary is deliberate:
 - Real aircraft still need low-level flight controllers, PID loops, GPS/IMU fusion, Kalman filtering, certified geofencing, and hardware safety validation.
 - The current demo is a trace-driven simulation, not a claim that an LLM directly flies physical drones.
 
+## 1.2 Advanced Hybrid Control Tower Demo
+
+The Hugging Face demo now presents DroneZ as a professional hybrid-drone control tower:
+
+- a cinematic 2.5D/SVG procedural city map that does not depend on map API keys
+- trace-driven drone movement, orders, charging stations, no-fly zones, storms, route corridors, and event timelines
+- enriched visualization metadata for curved safe/caution/blocked/active routes
+- simulated telemetry panels for battery, altitude, speed, wind exposure, GPS lock, IMU, camera, LiDAR, thermal status, ETA, payload, route risk, and sensor confidence
+- a control tower / parent server panel for dispatch queue, urgent queue, override status, RL recommendations, and fleet health
+- a visible hybrid architecture split: low-level drone control, high-level RL/AI decisions, and organization-level control tower policy
+- Stage Demo Mode for a cleaner judge-facing view
+
+The enriched telemetry is clearly labeled as simulated visualization metadata derived from DroneZ traces. It is not real aircraft telemetry.
+
 ## 2. Why This Is an OpenEnv / RL Problem
 
 DroneZ is designed around the exact loop OpenEnv is meant to standardize:
@@ -166,9 +180,17 @@ Generated artifacts:
 - `artifacts/traces/demo_naive_trace.json`
 - `artifacts/traces/demo_heuristic_trace.json`
 - `artifacts/traces/demo_improved_trace.json`
+- `artifacts/traces/demo_random_enriched.json`
+- `artifacts/traces/demo_naive_enriched.json`
+- `artifacts/traces/demo_heuristic_enriched.json`
+- `artifacts/traces/demo_improved_enriched.json`
 - `artifacts/plots/reward_comparison.png`
 - `artifacts/plots/delivery_success_comparison.png`
 - `artifacts/plots/invalid_actions_comparison.png`
+- `artifacts/plots/valid_action_rate.png`
+- `artifacts/plots/training_reward_curve.png`
+- `artifacts/plots/training_loss_curve.png`
+- `artifacts/plots/eval_before_after.png`
 
 Current deterministic comparison snapshot:
 
@@ -218,6 +240,8 @@ This repo currently includes:
 - `scripts/train_grpo.py --mode trl-template`
 - `scripts/train_grpo_local.py`
 - `scripts/train_grpo_colab.py`
+- `scripts/generate_sft_action_data.py`
+- `scripts/train_action_format_sft.py`
 - `notebooks/train_dronez_grpo_colab.ipynb`
 - `COLAB_TRAINING.md`
 
@@ -226,22 +250,27 @@ What is honest right now:
 - the smoke mode uses the actual environment loop locally
 - the dry-run mode prepares the real prompt/action interface and writes reference artifacts
 - `scripts/train_grpo_local.py` is the dedicated local GPU path for a real GRPO-style run
+- compact action prompts, candidate-choice mode, robust parsing, safe repair, and format-check diagnostics are now implemented
+- `artifacts/training/sft_action_data.jsonl` contains valid warm-start examples generated from the improved policy
 - the Colab entrypoint remains a dependency-gated template wrapper
 - no fake trained-model claims or fake GRPO results are included in tracked artifacts
 
 Honesty box:
 
 - Current measured improvement in this repo: deterministic `improved` policy vs baselines
-- Real GRPO / Unsloth training has still not been executed in this tracked repo state
-- Update this section only after a real run produces `eval_before`, `eval_after`, and training plots
+- A real local GRPO-style run was attempted externally on an NVIDIA RTX 5060 Laptop GPU, but it did not improve because invalid actions dominated
+- Current action-format diagnostics are much better than the failed run: `valid_json_rate = 0.875`, `valid_action_rate = 0.875`
+- This local final pass attempted the candidate-choice GRPO command, but stopped honestly before training because CUDA was unavailable; blocked-run artifacts are stored in `artifacts/training/candidate_grpo/`
+- Update this section only after a new real run proves `eval_after` is better than `eval_before`
 
 Recommended next step onsite:
 
 1. Install train extras: `pip install -e .[train]`
 2. Run `python scripts/train_grpo_local.py --sanity-check --model Qwen/Qwen2.5-0.5B-Instruct --output-dir artifacts/training/local_sanity`
-3. Run `python scripts/train_grpo_local.py --model Qwen/Qwen2.5-0.5B-Instruct --tasks easy,medium,demo --eval-tasks easy,medium,demo,hard --output-dir artifacts/training` on a local GPU machine
-4. Save real reward curves and before/after comparisons back into `artifacts/`
-5. Replace the honesty box with real training evidence only after the run finishes
+3. Run `python scripts/train_grpo_local.py --format-check --candidate-choice --model Qwen/Qwen2.5-0.5B-Instruct --tasks easy,demo --output-dir artifacts/training/format_check`
+4. Run `python scripts/train_grpo_local.py --real-train --candidate-choice --model Qwen/Qwen2.5-0.5B-Instruct --tasks easy,medium,demo --eval-tasks easy,medium,demo,hard --episodes 20 --group-size 4 --output-dir artifacts/training/candidate_grpo` on a CUDA GPU machine
+5. Save real reward curves and before/after comparisons back into `artifacts/`
+6. Replace the honesty box with real training evidence only after the run finishes
 
 Notes on the new local script:
 
@@ -260,7 +289,7 @@ Recent command notes:
 - `python scripts/train_grpo.py --mode smoke`
 - `python scripts/train_grpo.py --mode dry-run`
 - `python scripts/train_grpo_local.py --sanity-check --output-dir artifacts/training/local_sanity`
-- `python scripts/train_grpo_local.py --model Qwen/Qwen2.5-0.5B-Instruct --tasks easy,medium,demo --eval-tasks easy,medium,demo,hard --output-dir artifacts/training`
+- `python scripts/train_grpo_local.py --format-check --candidate-choice --model Qwen/Qwen2.5-0.5B-Instruct --tasks easy,demo --output-dir artifacts/training/format_check`
 - `python scripts/train_grpo_colab.py --dry-run --model Qwen/Qwen2.5-0.5B-Instruct --tasks easy,medium,demo --output-dir artifacts/training`
 - `python scripts/train_grpo_colab.py --model Qwen/Qwen2.5-0.5B-Instruct --tasks easy,medium,demo --output-dir artifacts/training`
 
@@ -271,11 +300,12 @@ What the current repo state proves:
 - local smoke execution works
 - dry-run artifact generation works
 - the local GPU training entrypoint now exists and can self-report dependency/GPU readiness
-- a real trained-model claim still requires an actual GPU run and the resulting evaluation artifacts
+- action-format diagnostics and candidate-choice scaffolding work
+- a real trained-model improvement claim still requires a new GPU run where the resulting `eval_after` beats `eval_before`
 
 What still requires external compute:
 
-- any real GRPO/TRL/Unsloth optimization pass
+- a successful real GRPO/TRL/Unsloth optimization pass
 - before/after trained-model evaluation evidence
 - training plots generated from a completed run
 
@@ -305,10 +335,11 @@ The repo now has a clear split between scaffolding and real local-GPU execution,
 
 ## 12. Visual Demo
 
-The replay UI is trace-driven and intentionally lightweight.
+The replay UI is trace-driven and intentionally lightweight, but it now looks like an enterprise control tower rather than a toy grid.
 
 - UI entry: `demo_ui/index.html`
-- Data source: `artifacts/traces/*.json`
+- Data source: `artifacts/traces/*_trace.json`
+- Preferred visualization source: `artifacts/traces/*_enriched.json`
 - Suggested local run:
 
 ```bash
@@ -324,10 +355,15 @@ The UI replays real environment traces and shows:
 
 - city sectors and hazards
 - charging stations
-- active drone locations and paths
+- active drone locations, animated drone movement, and curved route corridors
 - pending and urgent orders
+- simulated drone telemetry
+- weather, wind, no-fly, obstacle, and congestion panels
+- control tower / parent server state
+- hybrid low-level control versus high-level RL/AI architecture
 - reward and status panels
 - recent event log
+- Stage Demo Mode for judges
 
 Suggested stage flow:
 
@@ -335,8 +371,9 @@ Suggested stage flow:
 2. show poor reward and unsafe behavior
 3. switch to `heuristic`
 4. switch to `improved`
-5. point at the reward breakdown and policy snapshot panels
-6. finish on the reward comparison plot
+5. turn on Stage Demo Mode
+6. point at the route animation, safety comparison, telemetry, and control tower panels
+7. finish on the reward comparison plot
 
 ## 13. Local Setup
 
@@ -395,6 +432,11 @@ OpenEnv / HF Space:
 - Docker testing guide: `DOCKER_TESTING.md`
 - blog/writeup draft: `BLOG.md`
 - stage script: `FINAL_STAGE_SCRIPT.md`
+- learn from zero: `LEARN_DRONEZ_FROM_ZERO.md`
+- file-by-file guide: `FILE_BY_FILE_GUIDE.md`
+- tech stack guide: `TECH_STACK_EXPLAINED.md`
+- product architecture: `DRONE_RL_PRODUCT_ARCHITECTURE.md`
+- training results explained: `TRAINING_RESULTS_EXPLAINED.md`
 - official OpenEnv docs: [OpenEnv](https://meta-pytorch.org/OpenEnv/index.html)
 - install docs: [Installation](https://meta-pytorch.org/OpenEnv/installation.html)
 - official repo: [meta-pytorch/OpenEnv](https://github.com/meta-pytorch/OpenEnv)
@@ -461,7 +503,7 @@ python scripts/train_grpo_local.py --format-check --candidate-choice --tasks eas
 Recommended next real-training command on a GPU machine:
 
 ```bash
-python scripts/train_grpo_local.py --real-train --candidate-choice --model Qwen/Qwen2.5-0.5B-Instruct --tasks easy,medium,demo --eval-tasks easy,medium,demo,hard --output-dir artifacts/training
+python scripts/train_grpo_local.py --real-train --candidate-choice --model Qwen/Qwen2.5-0.5B-Instruct --tasks easy,medium,demo --eval-tasks easy,medium,demo,hard --episodes 20 --group-size 4 --output-dir artifacts/training/candidate_grpo
 ```
 
 ## 15.4 Learning Roadmap
