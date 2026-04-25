@@ -54,8 +54,8 @@ This path is the repo's dedicated real-training entrypoint. It is the only track
 In Colab:
 
 ```bash
-git clone https://github.com/SAICHAITU2012/Meta-Drone-Environment.git
-cd Meta-Drone-Environment
+git clone https://github.com/Hollenite/DroneZ.git
+cd DroneZ
 pip install -e .[train]
 python scripts/train_grpo_colab.py --dry-run --model Qwen/Qwen2.5-0.5B-Instruct --tasks easy,medium,demo --output-dir artifacts/training
 ```

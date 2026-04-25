@@ -64,7 +64,7 @@ def runtime_manifest() -> dict[str, object]:
         "demo": "/demo/index.html" if DEMO_DIR.exists() else None,
         "artifacts": "/artifacts" if ARTIFACTS_DIR.exists() else None,
         "space": "https://huggingface.co/spaces/Krishna2521/dronez-openenv",
-        "github": "https://github.com/SAICHAITU2012/Meta-Drone-Environment",
+        "github": "https://github.com/Hollenite/DroneZ",
     }
 
 

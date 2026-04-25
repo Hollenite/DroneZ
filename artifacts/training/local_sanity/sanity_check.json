@@ -1,0 +1,31 @@
+{
+  "mode": "local-grpo-sanity",
+  "training_executed": false,
+  "note": "This is a dependency and runtime validation path for the local GPU training script. It does not download a model or claim that training happened.",
+  "selected_model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "curriculum": [
+    "easy",
+    "medium",
+    "demo"
+  ],
+  "eval_tasks": [
+    "easy",
+    "medium",
+    "demo",
+    "hard"
+  ],
+  "dependency_status": {
+    "datasets": false,
+    "transformers": false,
+    "trl": false,
+    "accelerate": false,
+    "torch": true,
+    "peft": false
+  },
+  "device": {
+    "gpu_available": false,
+    "dtype": null,
+    "torch_version": "2.9.1"
+  },
+  "output_dir": "artifacts/training/local_sanity"
+}
