@@ -1,20 +1,18 @@
 # DroneZ Agent Playground
 
-This document explains the staging Agent Playground for DroneZ.
+This document explains the Agent Playground for DroneZ.
 
-Staging runtime:
+Official runtime:
 
 ```text
-https://krishna2521-meta-drone-env.hf.space/agent/
+https://krishna2521-dronez-openenv.hf.space/agent/
 ```
 
-Official submitted Space:
+Official Hugging Face Space:
 
 ```text
 https://huggingface.co/spaces/Krishna2521/dronez-openenv
 ```
-
-The submitted Space is frozen. The staging Space is a safe copy for testing the new agent-facing workflow.
 
 ## What `/agent` Is
 
@@ -33,7 +31,7 @@ reset -> observation -> action -> step -> reward/done/info -> repeat
 Example:
 
 ```bash
-curl -X POST https://krishna2521-meta-drone-env.hf.space/reset \
+curl -X POST https://krishna2521-dronez-openenv.hf.space/reset \
   -H "Content-Type: application/json" \
   -d '{"task_id":"easy"}'
 ```
@@ -45,7 +43,7 @@ The response contains a `session_id`, an `observation`, and `info`.
 Example:
 
 ```bash
-curl -X POST https://krishna2521-meta-drone-env.hf.space/step \
+curl -X POST https://krishna2521-dronez-openenv.hf.space/step \
   -H "Content-Type: application/json" \
   -d '{"action":{"action":"assign_delivery","params":{"drone_id":"FA-1","order_id":"O1"}}}'
 ```
@@ -59,7 +57,7 @@ The response contains the next `observation`, `reward`, `done`, and `info`.
 Example:
 
 ```bash
-curl -X POST https://krishna2521-meta-drone-env.hf.space/valid-actions \
+curl -X POST https://krishna2521-dronez-openenv.hf.space/valid-actions \
   -H "Content-Type: application/json" \
   -d '{}'
 ```
@@ -73,7 +71,7 @@ A minimal Python loop looks like this:
 ```python
 import requests
 
-BASE = "https://krishna2521-meta-drone-env.hf.space"
+BASE = "https://krishna2521-dronez-openenv.hf.space"
 
 reset = requests.post(f"{BASE}/reset", json={"task_id": "easy"}).json()
 for step in range(20):
@@ -88,22 +86,14 @@ for step in range(20):
 Repo examples:
 
 ```bash
-BASE_URL=https://krishna2521-meta-drone-env.hf.space python examples/remote_agent_quickstart.py
-BASE_URL=https://krishna2521-meta-drone-env.hf.space python examples/random_remote_agent.py
+BASE_URL=https://krishna2521-dronez-openenv.hf.space python examples/remote_agent_quickstart.py
+BASE_URL=https://krishna2521-dronez-openenv.hf.space python examples/random_remote_agent.py
 ```
 
-## Staging Vs Submitted Space
+## Official Space
 
-The official hackathon-submitted Space remains:
+The official DroneZ Space is:
 
 ```text
 https://huggingface.co/spaces/Krishna2521/dronez-openenv
 ```
-
-The staging Space is:
-
-```text
-https://huggingface.co/spaces/Krishna2521/Meta_Drone_env
-```
-
-Only staging should receive these post-submission changes unless the team explicitly decides later that copying them to the submitted Space is worth the risk.

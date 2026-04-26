@@ -49,8 +49,7 @@ DroneZ turns drone delivery operations into a reward-driven OpenEnv environment 
 | Resource | Link |
 | --- | --- |
 | Hugging Face Space Repository | https://huggingface.co/spaces/Krishna2521/dronez-openenv |
-| Post-submission Staging Space | https://huggingface.co/spaces/Krishna2521/Meta_Drone_env |
-| Staging Agent Playground | https://krishna2521-meta-drone-env.hf.space/agent |
+| Agent Playground | https://krishna2521-dronez-openenv.hf.space/agent |
 | 3D Simulator Public URL | https://creative-klepon-8a1f8a.netlify.app/ |
 | 3D Simulator Static Folder | [simulator_public/](simulator_public/) |
 | 3D Simulator Deploy Guide | [README_DEPLOY.md](README_DEPLOY.md) |
@@ -62,8 +61,6 @@ DroneZ turns drone delivery operations into a reward-driven OpenEnv environment 
 | Team GitHub Repo | https://github.com/Hollenite/DroneZ.git |
 | Blog / Writeup | [BLOG.md](BLOG.md) |
 | Full Documentation | [docs/README.md](docs/README.md) |
-
-> Post-submission safety note: the official submitted Space remains `Krishna2521/dronez-openenv`. The `Krishna2521/Meta_Drone_env` Space is a staging environment for safe post-submission agent-playground improvements.
 
 ## 🧠 What DroneZ Actually Is
 
@@ -121,13 +118,13 @@ DroneZ is an interactive environment, not only a replay dashboard. The core agen
 reset -> observation -> action -> step -> reward + done + info -> repeat
 ```
 
-Staging agent playground:
+Agent playground:
 
 ```text
-https://krishna2521-meta-drone-env.hf.space/agent
+https://krishna2521-dronez-openenv.hf.space/agent
 ```
 
-Useful staging endpoints:
+Useful runtime endpoints:
 
 - `GET /env-spec` explains the environment contract.
 - `GET /action-space` lists allowed action names and required parameters.
@@ -141,7 +138,7 @@ Minimal remote loop:
 ```python
 import requests
 
-BASE = "https://krishna2521-meta-drone-env.hf.space"
+BASE = "https://krishna2521-dronez-openenv.hf.space"
 
 reset = requests.post(f"{BASE}/reset", json={"task_id": "easy"}).json()
 for t in range(20):

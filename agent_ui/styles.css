@@ -50,7 +50,7 @@ a:hover {
   padding: 24px 0 48px;
 }
 
-.staging-banner {
+.runtime-banner {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -64,7 +64,7 @@ a:hover {
   box-shadow: 0 12px 34px rgba(147, 105, 36, 0.1);
 }
 
-.staging-banner a {
+.runtime-banner a {
   color: #174ea6;
   font-weight: 900;
 }

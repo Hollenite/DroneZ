@@ -2,16 +2,10 @@
 
 This guide is for the standalone 3D simulator only.
 
-The official submitted Hugging Face Space remains frozen:
+Official DroneZ Hugging Face Space:
 
 ```text
 https://huggingface.co/spaces/Krishna2521/dronez-openenv
-```
-
-Use the staging Space for simulator links and post-submission testing:
-
-```text
-https://huggingface.co/spaces/Krishna2521/Meta_Drone_env
 ```
 
 ## What The Simulator Is
@@ -126,7 +120,7 @@ Manual Netlify fallback:
 2. Use "Add new site" -> "Deploy manually".
 3. Drag and drop the `simulator_public/` folder.
 4. Copy the generated public URL.
-5. Add that URL to the staging Space first.
+5. Add that URL to the production UI after testing it.
 
 ## After Deployment
 
@@ -141,5 +135,4 @@ If you replace or rename the public deployment later:
 1. Test it in a browser.
 2. Confirm it opens in bright/day mode by default.
 3. Confirm the night toggle still works.
-4. Add the URL to staging UI first.
-5. Do not add it to the submitted Space unless the team explicitly approves later.
+4. Update the production UI and README with the new URL.

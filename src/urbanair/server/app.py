@@ -274,8 +274,9 @@ def env_spec() -> dict[str, object]:
             "demo": "/demo/index.html",
             "agent_playground": "/agent/index.html",
             "colab": "https://colab.research.google.com/drive/1ge0s9eYcbeE25oEXh6t-wySGh3ZCR9AV",
-            "staging_space": "https://huggingface.co/spaces/Krishna2521/Meta_Drone_env",
-            "official_submitted_space": "https://huggingface.co/spaces/Krishna2521/dronez-openenv",
+            "space": "https://huggingface.co/spaces/Krishna2521/dronez-openenv",
+            "runtime": "https://krishna2521-dronez-openenv.hf.space",
+            "simulator": "https://creative-klepon-8a1f8a.netlify.app/",
         },
     }
 
@@ -356,7 +357,7 @@ def valid_actions(payload: ValidActionsRequest | None = None) -> dict[str, objec
 
 @app.get("/examples")
 def examples() -> dict[str, object]:
-    base = "https://krishna2521-meta-drone-env.hf.space"
+    base = "https://krishna2521-dronez-openenv.hf.space"
     action = {"action": "prioritize_order", "params": {"order_id": "O1"}}
     return {
         "curl_reset": f"curl -X POST {base}/reset -H 'Content-Type: application/json' -d '{{\"task_id\":\"easy\"}}'",

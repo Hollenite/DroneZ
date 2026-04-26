@@ -1,4 +1,4 @@
-"""Random valid-action remote agent for DroneZ staging runtime."""
+"""Random valid-action remote agent for the DroneZ runtime."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from typing import Any
 import requests
 
 
-BASE_URL = os.environ.get("BASE_URL", "https://krishna2521-meta-drone-env.hf.space").rstrip("/")
+BASE_URL = os.environ.get("BASE_URL", "https://krishna2521-dronez-openenv.hf.space").rstrip("/")
 TASK_ID = os.environ.get("TASK_ID", "easy")
 MAX_STEPS = int(os.environ.get("MAX_STEPS", "20"))
 SEED = int(os.environ.get("SEED", "42"))
