@@ -8,207 +8,126 @@ pinned: false
 license: mit
 ---
 
-# DroneZ
+# DroneZ Fleet Delivery Environment
 
-DroneZ is an OpenEnv-style RL environment for training an LLM to act as a mission-level fleet operations controller for autonomous delivery drones.
+DroneZ is an OpenEnv RL environment for training and evaluating mission-level drone fleet controllers under weather, no-fly zones, battery limits, urgent orders, and delivery uncertainty.
 
-## 1. Problem
+## Submission Links
 
-Drone delivery does not fail because of pathfinding alone. Real operations break when urgent orders arrive late, weather shifts, no-fly zones move, batteries drain unevenly, recipients disappear, chargers back up, and the controller must continuously replan across a heterogeneous fleet.
+- Hugging Face Space Repository: https://huggingface.co/spaces/Krishna2521/dronez-openenv
+- Live Runtime: https://krishna2521-dronez-openenv.hf.space
+- Live Demo: https://krishna2521-dronez-openenv.hf.space/demo/index.html
+- API Docs: https://krishna2521-dronez-openenv.hf.space/docs
+- Health Check: https://krishna2521-dronez-openenv.hf.space/health
+- GitHub Team Repo: https://github.com/Hollenite/DroneZ.git
+- Colab Notebook Path: `notebooks/train_dronez_grpo_colab.ipynb`
+- Public Colab Link: https://colab.research.google.com/drive/1ge0s9eYcbeE25oEXh6t-wySGh3ZCR9AV
+- Blog / Writeup: `BLOG.md` in this repo. Public blog URL: `TODO - add before final form submission if published externally`.
+- YouTube Demo: `TODO - add before final form submission`.
+- Slides / Presentation: `TODO - add before final form submission`.
 
-DroneZ models that operational layer. The agent is not piloting a drone. It is deciding which drone should take which mission, when to reroute, when to hold a zone, when to send a drone to charge, and how to recover from failed drops.
+## Introduction
 
-## 1.1 Product Framing
+When users order something online, they expect delivery to be fast and reliable. Drones can make delivery faster because they avoid road traffic, but real drone delivery is not automatically optimal. A drone fleet must handle weather, no-fly zones, battery limits, obstacles, urgent orders, changing recipients, charging congestion, and safety rules.
 
-DroneZ is a B2B simulation and RL training platform for autonomous drone fleet operations. A logistics, medical, inspection, or campus-security organization can configure drone profiles, payload limits, battery constraints, sensor suites, safety strictness, and objective weights, then train and evaluate a mission-level LLM controller before any real-world deployment.
+DroneZ focuses on the decision-making layer. It asks: how should a fleet controller assign drones, choose routes, reroute around disruptions, send drones to charge, prioritize urgent orders, and recover from failed delivery attempts?
 
-The platform boundary is deliberate:
+## What DroneZ Actually Does
 
-- DroneZ handles mission-level decisions: assignment, rerouting, charging, prioritization, safety holds, and recovery.
-- Real aircraft still need low-level flight controllers, PID loops, GPS/IMU fusion, Kalman filtering, certified geofencing, and hardware safety validation.
-- The current demo is a trace-driven simulation, not a claim that an LLM directly flies physical drones.
+DroneZ is not a low-level motor-control simulator. It does not train an RL model to directly spin propellers.
 
-## 1.2 Advanced Hybrid Control Tower Demo
+DroneZ is a mission-level drone fleet operations environment:
 
-The Hugging Face demo now presents DroneZ as a professional hybrid-drone control tower:
+- Classical drone systems handle stability, PID loops, GPS navigation, sensor fusion, Kalman-style state estimation, geofencing, and emergency safety rules.
+- RL/AI handles high-level decisions such as assignment, routing, charging, recovery, urgent-order priority, and fleet-level mission optimization.
+- The browser demo visualizes this as a hybrid drone control tower: low-level drone control, high-level RL/AI control, and organization-level fleet monitoring.
 
-- a cinematic 2.5D/SVG procedural city map that does not depend on map API keys
-- trace-driven drone movement, orders, charging stations, no-fly zones, storms, route corridors, and event timelines
-- enriched visualization metadata for curved safe/caution/blocked/active routes
-- simulated telemetry panels for battery, altitude, speed, wind exposure, GPS lock, IMU, camera, LiDAR, thermal status, ETA, payload, route risk, and sensor confidence
-- a control tower / parent server panel for dispatch queue, urgent queue, override status, RL recommendations, and fleet health
-- a visible hybrid architecture split: low-level drone control, high-level RL/AI decisions, and organization-level control tower policy
-- Stage Demo Mode for a cleaner judge-facing view
+This boundary is important. It makes the project realistic: real delivery drones are hybrid systems, not pure RL robots.
 
-The enriched telemetry is clearly labeled as simulated visualization metadata derived from DroneZ traces. It is not real aircraft telemetry.
+## OpenEnv Loop
 
-## 2. Why This Is an OpenEnv / RL Problem
+DroneZ follows the standard OpenEnv interaction loop:
 
-DroneZ is designed around the exact loop OpenEnv is meant to standardize:
+1. `reset` starts a fresh scenario.
+2. The agent receives an observation describing drones, orders, sectors, chargers, weather, warnings, and recent events.
+3. The agent sends one structured action.
+4. `step` applies that action, advances the simulated world, and returns reward plus the next observation.
+5. Repeating this loop lets policies be evaluated and improved.
 
-1. Reset into a fresh logistics scenario.
-2. Observe structured fleet, order, city, and disruption state.
-3. Choose one action at a time.
-4. Let the environment advance and return reward, done, and next observation.
-5. Improve the policy through repeated interaction, not static labels alone.
+In simple words: the agent sees the fleet, chooses a mission decision, receives a score, and tries to make better decisions over time.
 
-The environment is stateful, partially observable, multi-step, and reward-driven. That makes it a strong fit for OpenEnv and for verifiable RL pipelines such as GRPO.
+## Environment Design
 
-## 3. Theme Fit
+Each episode contains:
 
-- Primary: Theme `#3.1` World Modeling / Professional Tasks
-- Secondary: Theme `#1` Multi-Agent Interactions
-- Optional: Theme `#2` Long-Horizon Planning
+- Drones with battery, location, route, payload capacity, health state, and assignment state.
+- Orders with priority, deadline, destination, availability, fallback options, and retry state.
+- City sectors with weather, congestion, no-fly restrictions, and safety risk.
+- Charging stations with limited capacity and reservations.
+- Disruptions such as storms, restricted sectors, failed drops, and urgent-order changes.
 
-## 4. Environment Overview
+The environment is designed to reward safe, useful long-horizon decisions rather than one-step shortcuts.
 
-The agent controls a heterogeneous fleet:
+## Action Space
 
-- `fast_light`
-- `heavy_carrier`
-- `long_range_sensitive`
-- `relay`
+The main actions are:
 
-Each episode tracks:
+- `assign_delivery`: assign an order to a drone.
+- `attempt_delivery`: attempt a drop when a drone reaches its destination.
+- `reroute`: change a drone route to avoid risk or recover from disruption.
+- `prioritize_order`: move an urgent or important order higher in the queue.
+- `fallback_to_locker`: send a package to a safe locker when the recipient is unavailable.
+- `return_to_charge`: send a drone to a charging station.
+- `reserve_charger`: reserve charging capacity.
+- `hold_fleet`: pause operations in unsafe conditions.
+- `resume_operations`: restart operations after a hold.
+- `delay_order` and `swap_assignments`: handle scheduling or assignment changes.
 
-- fleet battery, position, assignment, route, and risk
-- order priority, deadlines, availability, fallback options, and retries
-- sector weather, congestion, no-fly state, and manual holds
-- charging occupancy and reservations
-- scripted and stochastic disruptions
+## Reward System
 
-### Reset / Step / State
+Positive rewards are given for:
 
-- `reset(task_id)` starts a scenario
-- `step(action)` advances the world
-- `state` is exposed through the HTTP runtime at `GET /sessions/{id}/state`
+- successful deliveries
+- urgent delivery success
+- completing deliveries before deadlines
+- safe reroutes
+- recovering from disruptions
+- battery-safe operation
+- efficient fleet usage
+- regulatory compliance
+- successful locker fallback
 
-## 5. Observation Space
+Negative penalties are given for:
 
-Each observation includes:
+- invalid actions
+- missed deadlines
+- failed delivery attempts
+- critical battery events
+- unsafe zone entry
+- unnecessary reroutes
+- abandoned urgent orders
+- idle fleet behavior while orders are waiting
+- charging misuse
+- loop or no-progress behavior
 
-- fleet states
-- order queue
-- city sectors
-- charging stations
-- recent events
-- warnings
-- action reminder
-- summary string for human-readable debugging
+The environment also includes safeguards: invalid actions are capped, episodes have action limits, deadline penalties are not double-counted, and reward breakdowns are logged for inspection.
 
-## 6. Action Space
+## Evaluation Results
 
-Current supported actions:
+Results are generated from `artifacts/results/policy_comparison.json` and `artifacts/results/policy_comparison.csv`.
 
-- `assign_delivery`
-- `reroute`
-- `return_to_charge`
-- `reserve_charger`
-- `delay_order`
-- `prioritize_order`
-- `swap_assignments`
-- `attempt_delivery`
-- `fallback_to_locker`
-- `hold_fleet`
-- `resume_operations`
+### Aggregate Evaluation Across Easy, Medium, Hard, and Demo
 
-## 7. Termination Conditions
+| Policy | Mean Reward | Mean Normalized Score | Deliveries | Urgent Successes | Safety Violations | Invalid Actions |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| improved | **-42.125** | **0.3051** | 5 | 3 | **0** | 0 |
+| heuristic | -281.500 | 0.0797 | 10 | 5 | 182 | 0 |
+| random | -921.500 | 0.0100 | 9 | 4 | 396 | 0 |
+| naive | -1038.000 | 0.0100 | 6 | 3 | 497 | 0 |
 
-Episodes terminate when:
+The aggregate result shows that `improved` has the best mean reward, best normalized score, and zero safety violations. The heuristic baseline completes more deliveries overall, but it does so with much higher safety cost.
 
-- all orders are resolved
-- horizon is reached
-- no viable drones remain
-- invalid action cap is reached
-- action cap is reached
-
-The environment and evaluator both enforce safety caps so policy bugs cannot stall the demo.
-
-## 8. Reward Design
-
-### Positive components
-
-- `delivery_success`
-- `urgent_delivery_success`
-- `deadline_met`
-- `safe_reroute`
-- `disruption_recovery`
-- `battery_safe_operation`
-- `efficient_assignment`
-- `fleet_utilization`
-- `regulatory_compliance`
-- `successful_locker_fallback`
-
-### Negative components
-
-- `invalid_action`
-- `missed_deadline`
-- `failed_delivery_attempt`
-- `battery_critical`
-- `unsafe_zone_entry`
-- `unnecessary_reroute`
-- `abandoned_urgent_order`
-- `idle_with_pending_orders`
-- `overloaded_assignment`
-- `charging_misuse`
-- `loop_or_no_progress`
-
-### Anti-Reward-Hacking Safeguards
-
-- invalid actions are penalized and capped
-- action count is capped independently from environment ticks
-- safety reroutes are not double-penalized as unnecessary reroutes
-- deadline misses only count once when a deadline is first crossed
-- deterministic demo scenarios make judge replays reproducible
-- reward breakdowns are logged for every step and episode
-- normalized scores are clamped into `[0.01, 0.99]`
-
-## 9. Current Policies
-
-- `random`: deterministic pseudo-random baseline
-- `naive`: simple greedy controller
-- `heuristic`: stable hand-built baseline
-- `improved`: deterministic scripted policy for judge-facing demo and replay
-
-## 10. Evaluation
-
-Generated artifacts:
-
-- `artifacts/results/policy_comparison.json`
-- `artifacts/results/policy_comparison.csv`
-- `artifacts/traces/demo_random_trace.json`
-- `artifacts/traces/demo_naive_trace.json`
-- `artifacts/traces/demo_heuristic_trace.json`
-- `artifacts/traces/demo_improved_trace.json`
-- `artifacts/traces/demo_random_enriched.json`
-- `artifacts/traces/demo_naive_enriched.json`
-- `artifacts/traces/demo_heuristic_enriched.json`
-- `artifacts/traces/demo_improved_enriched.json`
-- `artifacts/plots/reward_comparison.png`
-- `artifacts/plots/delivery_success_comparison.png`
-- `artifacts/plots/invalid_actions_comparison.png`
-- `artifacts/plots/valid_action_rate.png`
-- `artifacts/plots/training_reward_curve.png`
-- `artifacts/plots/training_loss_curve.png`
-- `artifacts/plots/eval_before_after.png`
-
-Current deterministic comparison snapshot:
-
-| Task | Random | Naive | Heuristic | Improved |
-| --- | ---: | ---: | ---: | ---: |
-| Easy reward | -278.0 | -315.5 | -154.0 | **35.0** |
-| Medium reward | -1231.5 | -1259.5 | -439.5 | **-77.0** |
-| Hard reward | -2014.0 | -1969.5 | -564.5 | **-215.5** |
-| Demo reward | -162.5 | -607.5 | 32.0 | **89.0** |
-
-Current aggregate story:
-
-- `improved` has the best mean reward and best normalized score
-- `improved` keeps `0` invalid actions and `0` safety violations across the sweep
-- `heuristic` completes more deliveries, but does so with much higher safety cost
-- this repo currently proves deterministic policy improvement, not trained-model improvement
-
-Demo headline:
+### Demo Scenario Headline
 
 | Policy | Reward | Normalized Score | Deliveries | Urgent Successes | Safety Violations | Invalid Actions |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -217,338 +136,190 @@ Demo headline:
 | random | -162.5 | 0.0100 | 2 | 1 | 33 | 0 |
 | naive | -607.5 | 0.0100 | 0 | 0 | 72 | 0 |
 
-Run them with:
+Demo takeaway: the deterministic improved policy keeps the same delivery count as the heuristic baseline while reducing safety violations from `8` to `0` and increasing reward from `32.0` to `89.0`.
 
-```bash
-python scripts/evaluate_policies.py
-python scripts/generate_demo_trace.py --task demo --policy all
-python scripts/generate_plots.py
-```
+## Training Status
 
-Plot references:
+The current proven improvement is deterministic policy improvement, not trained-model reward improvement.
 
-- `artifacts/plots/reward_comparison.png`
-- `artifacts/plots/delivery_success_comparison.png`
-- `artifacts/plots/invalid_actions_comparison.png`
+A real GRPO-style training run was attempted on an NVIDIA RTX 5060 Laptop GPU using `Qwen/Qwen2.5-0.5B-Instruct`. That run did not improve reward. The model produced invalid DroneZ actions, episodes ended with `invalid_action_cap_reached`, reward stayed flat, loss stayed `0.0`, and `eval_before` matched `eval_after`.
 
-## 11. Training Pipeline
+The project now includes fixes for that bottleneck:
 
-This repo currently includes:
+- compact action prompts
+- robust JSON parsing
+- safe action repair
+- candidate-choice mode, where the model can choose from valid actions instead of inventing JSON from scratch
+- format-check diagnostics
+- SFT warm-start data from improved-policy traces
 
-- `scripts/train_grpo.py --mode smoke`
-- `scripts/train_grpo.py --mode dry-run`
-- `scripts/train_grpo.py --mode trl-template`
+Current format diagnostics in `artifacts/training/format_check/format_check.json` show:
+
+- `valid_json_rate`: `0.875`
+- `valid_action_rate`: `0.875`
+
+This is format reliability progress. It is not yet proof that a trained model improves reward. The README, pitch, and demo intentionally do not claim trained-model improvement.
+
+## Training Logs and Artifacts
+
+Small training and diagnostic artifacts are included:
+
+- `artifacts/training/local_sanity/sanity_check.json`
+- `artifacts/training/format_check/format_check.json`
+- `artifacts/training/sft_action_data.jsonl`
+- `artifacts/training/training_metrics.json`
+- `artifacts/training/eval_before.json`
+- `artifacts/training/eval_after.json`
+- `artifacts/training/candidate_grpo/training_metrics.json`
+- `artifacts/plots/training_reward_curve.png`
+- `artifacts/plots/training_loss_curve.png`
+- `artifacts/plots/valid_action_rate.png`
+- `artifacts/plots/eval_before_after.png`
+
+Training entrypoints:
+
+- `scripts/train_grpo.py`
 - `scripts/train_grpo_local.py`
 - `scripts/train_grpo_colab.py`
 - `scripts/generate_sft_action_data.py`
 - `scripts/train_action_format_sft.py`
 - `notebooks/train_dronez_grpo_colab.ipynb`
-- `COLAB_TRAINING.md`
 
-What is honest right now:
+## Interactive Demonstration Interface
 
-- the smoke mode uses the actual environment loop locally
-- the dry-run mode prepares the real prompt/action interface and writes reference artifacts
-- `scripts/train_grpo_local.py` is the dedicated local GPU path for a real GRPO-style run
-- compact action prompts, candidate-choice mode, robust parsing, safe repair, and format-check diagnostics are now implemented
-- `artifacts/training/sft_action_data.jsonl` contains valid warm-start examples generated from the improved policy
-- the Colab entrypoint remains a dependency-gated template wrapper
-- no fake trained-model claims or fake GRPO results are included in tracked artifacts
+The browser replay UI uses real JSON traces from the environment. It presents DroneZ as a high-tech hybrid-drone control tower rather than a simple grid.
 
-Honesty box:
+Key visual features:
 
-- Current measured improvement in this repo: deterministic `improved` policy vs baselines
-- A real local GRPO-style run was attempted externally on an NVIDIA RTX 5060 Laptop GPU, but it did not improve because invalid actions dominated
-- Current action-format diagnostics are much better than the failed run: `valid_json_rate = 0.875`, `valid_action_rate = 0.875`
-- This local final pass attempted the candidate-choice GRPO command, but stopped honestly before training because CUDA was unavailable; blocked-run artifacts are stored in `artifacts/training/candidate_grpo/`
-- Update this section only after a new real run proves `eval_after` is better than `eval_before`
+- 2.5D procedural city map
+- curved route corridors
+- active drones and delivery orders
+- charging stations
+- weather overlays
+- no-fly zones
+- simulated telemetry
+- reward evolution tracking
+- recent events feed
+- control tower state monitoring
+- Stage Demo Mode for cleaner presentation
 
-Recommended next step onsite:
+Route geometry, wind values, sensor indicators, and control-layer labels are derived visualization metadata. They are useful for explaining the simulated mission, but they are not real aircraft telemetry.
 
-1. Install train extras: `pip install -e .[train]`
-2. Run `python scripts/train_grpo_local.py --sanity-check --model Qwen/Qwen2.5-0.5B-Instruct --output-dir artifacts/training/local_sanity`
-3. Run `python scripts/train_grpo_local.py --format-check --candidate-choice --model Qwen/Qwen2.5-0.5B-Instruct --tasks easy,demo --output-dir artifacts/training/format_check`
-4. Run `python scripts/train_grpo_local.py --real-train --candidate-choice --model Qwen/Qwen2.5-0.5B-Instruct --tasks easy,medium,demo --eval-tasks easy,medium,demo,hard --episodes 20 --group-size 4 --output-dir artifacts/training/candidate_grpo` on a CUDA GPU machine
-5. Save real reward curves and before/after comparisons back into `artifacts/`
-6. Replace the honesty box with real training evidence only after the run finishes
+## Standalone Cinematic Simulator
 
-Notes on the new local script:
+The repo also includes a separate local simulator in `dronez_world_sim/`. It is intended for presentation and visual storytelling, while the OpenEnv runtime remains the authoritative environment.
 
-- `--sanity-check` writes honest dependency/GPU metadata without downloading a model or claiming training happened.
-- The real run writes canonical `training_metrics.json`, `eval_before.json`, and `eval_after.json` only after actual optimizer updates complete.
-- Large checkpoints or model weights should stay out of the git commit unless you intentionally want to publish them.
-
-Fallback Colab path:
-
-- `python scripts/train_grpo_colab.py --dry-run --model Qwen/Qwen2.5-0.5B-Instruct --tasks easy,medium,demo --output-dir artifacts/training` remains the supported Colab prep path today.
-- `python scripts/train_grpo_colab.py --model Qwen/Qwen2.5-0.5B-Instruct --tasks easy,medium,demo --output-dir artifacts/training` currently checks dependencies and writes a template plan; it does not yet produce real trained-model artifacts by itself.
-- If your laptop GPU is unavailable, use Colab for smoke/template validation today and run the real training loop from the local script logic on a GPU machine until the Colab wrapper is upgraded.
-
-Recent command notes:
-
-- `python scripts/train_grpo.py --mode smoke`
-- `python scripts/train_grpo.py --mode dry-run`
-- `python scripts/train_grpo_local.py --sanity-check --output-dir artifacts/training/local_sanity`
-- `python scripts/train_grpo_local.py --format-check --candidate-choice --model Qwen/Qwen2.5-0.5B-Instruct --tasks easy,demo --output-dir artifacts/training/format_check`
-- `python scripts/train_grpo_colab.py --dry-run --model Qwen/Qwen2.5-0.5B-Instruct --tasks easy,medium,demo --output-dir artifacts/training`
-- `python scripts/train_grpo_colab.py --model Qwen/Qwen2.5-0.5B-Instruct --tasks easy,medium,demo --output-dir artifacts/training`
-
-Remember: only the local GPU script is intended to produce `training_executed: true` in tracked training artifacts.
-
-What the current repo state proves:
-
-- local smoke execution works
-- dry-run artifact generation works
-- the local GPU training entrypoint now exists and can self-report dependency/GPU readiness
-- action-format diagnostics and candidate-choice scaffolding work
-- a real trained-model improvement claim still requires a new GPU run where the resulting `eval_after` beats `eval_before`
-
-What still requires external compute:
-
-- a successful real GRPO/TRL/Unsloth optimization pass
-- before/after trained-model evaluation evidence
-- training plots generated from a completed run
-
-Use the new local script if you want the shortest path from codebase to an actual run on your own machine.
-
-Recommended models:
-
-- `Qwen/Qwen2.5-0.5B-Instruct`
-- `Qwen/Qwen2.5-1.5B-Instruct`
-- `google/gemma-2-2b-it`
-
-The default curriculum remains:
-
-- `easy -> medium -> demo`, with `hard` reserved for evaluation unless you explicitly train on it.
-
-The local training loop keeps the existing prompt/action contract:
-
-- prompt source: DroneZ observation summary plus supported action list
-- action format: strict JSON with keys `action` and `params`
-- reward source: the real reward returned by `DroneZEnvironment.step(...)`
-
-Keep all judge-facing claims aligned with those facts.
-
-If you publish results later, prefer summarizing the actual `eval_before` / `eval_after` deltas rather than describing the training method in abstract.
-
-The repo now has a clear split between scaffolding and real local-GPU execution, but real training evidence still depends on an actual GPU run. Use the local script for your laptop/workstation GPU and keep judge-facing claims tied to the generated `eval_before` and `eval_after` files.
-
-## 12. Visual Demo
-
-The replay UI is trace-driven and intentionally lightweight, but it now looks like an enterprise control tower rather than a toy grid.
-
-- UI entry: `demo_ui/index.html`
-- Data source: `artifacts/traces/*_trace.json`
-- Preferred visualization source: `artifacts/traces/*_enriched.json`
-- Suggested local run:
+Run it locally from the repo root:
 
 ```bash
-python -m http.server 8080
+python -m http.server 8090
 ```
 
 Then open:
 
-- `http://localhost:8080/demo_ui/index.html`
-- HF Space after deployment: `https://krishna2521-dronez-openenv.hf.space/demo/index.html`
-
-The UI replays real environment traces and shows:
-
-- city sectors and hazards
-- charging stations
-- active drone locations, animated drone movement, and curved route corridors
-- pending and urgent orders
-- simulated drone telemetry
-- weather, wind, no-fly, obstacle, and congestion panels
-- control tower / parent server state
-- hybrid low-level control versus high-level RL/AI architecture
-- reward and status panels
-- recent event log
-- Stage Demo Mode for judges
-
-Suggested stage flow:
-
-1. load `random` or `naive`
-2. show poor reward and unsafe behavior
-3. switch to `heuristic`
-4. switch to `improved`
-5. turn on Stage Demo Mode
-6. point at the route animation, safety comparison, telemetry, and control tower panels
-7. finish on the reward comparison plot
-
-## 13. Local Setup
-
-```bash
-pip install -e .
-pytest -q
-python inference.py --task demo --policy heuristic --max-steps 8 --summary-only
-python inference.py --task demo --policy improved --summary-only
-python scripts/evaluate_policies.py
-python scripts/generate_demo_trace.py --task demo --policy all
-python scripts/generate_plots.py
-python scripts/train_grpo.py --mode smoke
-python scripts/train_grpo.py --mode dry-run
+```text
+http://127.0.0.1:8090/dronez_world_sim/index.html
 ```
 
-## 14. Server / Docker / HF Deployment
+The standalone simulator includes a larger 3D-style world, drone switching, day/night mode, mission routes, a minimap, telemetry cards, and trace-aware scenario controls.
 
-Run locally:
+## Running Locally
+
+Install the package:
 
 ```bash
-uvicorn server.app:app --host 0.0.0.0 --port 8000
+python -m pip install -e .
 ```
 
-State endpoints:
+Run the FastAPI/OpenEnv server:
 
-- `GET /health`
-- `GET /tasks`
-- `POST /reset`
-- `POST /step`
-- `GET /state`
-- `POST /sessions`
-- `POST /sessions/{session_id}/reset`
-- `GET /sessions/{session_id}/state`
-- `POST /sessions/{session_id}/step`
+```bash
+python -m uvicorn server.app:app --host 127.0.0.1 --port 8000
+```
 
-Docker:
+Open:
+
+```text
+http://127.0.0.1:8000
+http://127.0.0.1:8000/demo/index.html
+http://127.0.0.1:8000/docs
+```
+
+Useful checks:
+
+```bash
+curl http://127.0.0.1:8000/health
+curl http://127.0.0.1:8000/tasks
+curl http://127.0.0.1:8000/api
+curl http://127.0.0.1:8000/artifacts/traces/demo_improved_enriched.json
+```
+
+## Docker
+
+Build and run:
 
 ```bash
 docker build -t dronez .
 docker run --rm -p 8000:7860 dronez
 ```
 
-See `DOCKER_TESTING.md` for curl checks. The root Dockerfile listens on `7860` by default because Hugging Face Docker Spaces require that port.
+Then open:
 
-OpenEnv / HF Space:
-
-- manifest: `openenv.yaml`
-- app entry: `server.app:app`
-- canonical HF Dockerfile: `Dockerfile`
-- mirrored OpenEnv-layout Dockerfile: `server/Dockerfile`
-- OpenEnv validation command: `openenv validate`
-- current validation result: `PASS` (`Ready for multi-mode deployment`)
-- deployment guide: `HF_SPACE_DEPLOYMENT.md`
-- Colab training guide: `COLAB_TRAINING.md`
-- final submission checklist: `SUBMISSION_CHECKLIST.md`
-- Docker testing guide: `DOCKER_TESTING.md`
-- blog/writeup draft: `BLOG.md`
-- stage script: `FINAL_STAGE_SCRIPT.md`
-- learn from zero: `LEARN_DRONEZ_FROM_ZERO.md`
-- file-by-file guide: `FILE_BY_FILE_GUIDE.md`
-- tech stack guide: `TECH_STACK_EXPLAINED.md`
-- product architecture: `DRONE_RL_PRODUCT_ARCHITECTURE.md`
-- training results explained: `TRAINING_RESULTS_EXPLAINED.md`
-- final readiness audit: `FINAL_READINESS_REPORT.md`
-- official OpenEnv docs: [OpenEnv](https://meta-pytorch.org/OpenEnv/index.html)
-- install docs: [Installation](https://meta-pytorch.org/OpenEnv/installation.html)
-- official repo: [meta-pytorch/OpenEnv](https://github.com/meta-pytorch/OpenEnv)
-
-## 15. Submission Links To Fill Before Deadline
-
-- Team GitHub repo: `https://github.com/Hollenite/DroneZ.git`
-- HF Space repo: `https://huggingface.co/spaces/Krishna2521/dronez-openenv`
-- HF Space runtime: `https://krishna2521-dronez-openenv.hf.space`
-- Root app / judge demo: `https://krishna2521-dronez-openenv.hf.space`
-- API docs: `https://krishna2521-dronez-openenv.hf.space/docs`
-- Health: `https://krishna2521-dronez-openenv.hf.space/health`
-- GitHub repo: `https://github.com/Hollenite/DroneZ`
-- Colab notebook: `https://colab.research.google.com/drive/1ge0s9eYcbeE25oEXh6t-wySGh3ZCR9AV`
-- Blog / writeup: `BLOG.md` locally, replace with public Hugging Face/blog URL before final submission
-- Video / YouTube link: `FILL_ME`
-- Slides / presentation link: `FILL_ME`
-
-The root runtime URL opens the judge-facing DroneZ replay demo. API metadata is available at `/api` and `/runtime`, while the OpenAPI docs remain available at `/docs`.
-
-## 15.1 What Is Already Proven
-
-- The environment runs locally.
-- `pytest -q` passes.
-- `openenv validate` passes.
-- Evaluation artifacts regenerate.
-- The trace-driven demo UI replays real environment logs.
-- Deterministic `improved` policy beats random, naive, and heuristic baselines on reward/normalized score.
-
-## 15.2 What Requires External Compute
-
-- A real local GRPO-style run was attempted on an NVIDIA RTX 5060 Laptop GPU, but it did **not** improve the policy.
-- The failure mode was useful: the model produced invalid DroneZ actions, every rollout hit `invalid_action_cap_reached`, reward stayed flat, and loss stayed at `0.0`.
-- Current proven improvement is still deterministic `improved` policy versus baselines, not trained-model improvement.
-- The next training path is action-format SFT plus candidate-choice GRPO so the model learns valid JSON actions before strategic optimization.
-
-
-## 15.3 How To Run Real Training With HF / Colab Credits
-
-Use the available Hugging Face or Colab GPU credits only after confirming the environment and demo are stable. Do not commit large checkpoints. The recommended command is:
-
-```bash
-python scripts/train_grpo_colab.py --model Qwen/Qwen2.5-0.5B-Instruct --tasks easy,medium,demo --output-dir artifacts/training
+```text
+http://127.0.0.1:8000
 ```
 
-Expected real-training outputs after an actual run:
-
-- `artifacts/training/eval_before.json`
-- `artifacts/training/eval_after.json`
-- `artifacts/training/training_metrics.json`
-- `artifacts/plots/training_reward_curve.png`
-- `artifacts/plots/training_loss_curve.png` if loss is available
-
-Current honesty boundary: a real local GRPO-style attempt exposed an action-format bottleneck, but did not improve reward. Do not claim trained-model improvement unless a later `eval_after` beats `eval_before` and the plots show it.
-
-Action-format warm start:
+## Regenerating Results
 
 ```bash
+python scripts/evaluate_policies.py
+python scripts/generate_demo_trace.py --task easy --policy all
+python scripts/generate_demo_trace.py --task medium --policy all
+python scripts/generate_demo_trace.py --task hard --policy all
+python scripts/generate_demo_trace.py --task demo --policy all
+python scripts/enrich_demo_trace.py --task easy --policy all
+python scripts/enrich_demo_trace.py --task medium --policy all
+python scripts/enrich_demo_trace.py --task hard --policy all
+python scripts/enrich_demo_trace.py --task demo --policy all
+python scripts/generate_plots.py
+```
+
+Training diagnostics:
+
+```bash
+python scripts/train_grpo_local.py --sanity-check --model Qwen/Qwen2.5-0.5B-Instruct --output-dir artifacts/training/local_sanity
+python scripts/train_grpo_local.py --format-check --model Qwen/Qwen2.5-0.5B-Instruct --tasks easy,demo --output-dir artifacts/training/format_check
 python scripts/generate_sft_action_data.py --tasks easy,medium,demo,hard --output artifacts/training/sft_action_data.jsonl
-python scripts/train_action_format_sft.py --dry-run --data artifacts/training/sft_action_data.jsonl --output-dir artifacts/training/action_format_sft
-python scripts/train_grpo_local.py --format-check --candidate-choice --tasks easy,demo --output-dir artifacts/training/format_check
 ```
 
-Recommended next real-training command on a GPU machine:
+## Hugging Face Space
 
-```bash
-python scripts/train_grpo_local.py --real-train --candidate-choice --model Qwen/Qwen2.5-0.5B-Instruct --tasks easy,medium,demo --eval-tasks easy,medium,demo,hard --episodes 20 --group-size 4 --output-dir artifacts/training/candidate_grpo
-```
+The Hugging Face Space is the main evaluation target:
 
-## 15.4 Learning Roadmap
+- Space repo: https://huggingface.co/spaces/Krishna2521/dronez-openenv
+- Runtime: https://krishna2521-dronez-openenv.hf.space
+- Demo: https://krishna2521-dronez-openenv.hf.space/demo/index.html
+- Docs: https://krishna2521-dronez-openenv.hf.space/docs
 
-If you are explaining DroneZ from first principles, use this path:
+## Limitations
 
-1. RL basics: state, action, reward, policy, rollout, evaluation.
-2. OpenEnv: standardized `reset`, `step`, `state`, server runtime, and Space deployment.
-3. Drone systems basics: PID control, GPS, IMU, Kalman filtering, geofencing, aviation safety rules.
-4. Mission planning: dispatch, prioritization, rerouting, charging, failure recovery.
-5. Reward engineering: component rewards, safety penalties, invalid-action caps, anti-reward-hacking checks.
-6. TRL / GRPO / Unsloth: how LLM policies can be optimized with environment rewards.
-7. Simulation UI: trace-driven replay that shows what the controller actually did.
-8. Sim-to-real limitations: this is mission-level logistics control, not direct motor control.
+DroneZ does not yet simulate:
 
-## 16. Drone Customization
+- full Isaac Sim, Gazebo, AirSim, or real aerodynamics
+- real propeller or motor control
+- certified aviation behavior
+- real GPS, camera, LiDAR, radar, or thermal streams
+- proven trained-model reward improvement from GRPO
 
-Internal archetypes remain stable for training, while richer deployment profiles live in:
+The current honest status is:
 
-- `configs/fleet_profiles.yaml`
+- Environment: working
+- OpenEnv API: working
+- Docker/HF Space deployment: working
+- Deterministic improved policy: proven better than baselines on reward and safety
+- Real GRPO improvement: attempted, but not proven yet
+- Training pipeline: improved with candidate-choice, format diagnostics, and SFT warm-start data
 
-Deployment profiles include:
+## Conclusion
 
-- `light_food_delivery_drone`
-- `medical_priority_drone`
-- `heavy_package_drone`
-- `long_range_rural_drone`
-- `urban_fast_drone`
-- `relay_support_drone`
-
-Each profile includes speed, payload, battery, charging, range, energy use, failure modifier, compliance, and cost fields so companies can map the simulator to their own real fleets.
-
-## 17. Known Limitations
-
-- Real GRPO training was attempted externally but did not improve yet because the model failed action-format learning
-- The replay UI is static HTML/JS, not yet a full React build
-- Deployment profile selection is represented in config but not yet fully wired into task-specific fleet composition
-- The environment is intentionally mission-level, not physics-level
-- This is not training real physical drones. A real aircraft deployment would require certified flight controllers, low-level control loops, GPS/IMU sensor fusion, aviation-grade safety checks, and sim-to-real validation.
-
-## 18. Future Work
-
-- run action-format SFT, then candidate-choice GRPO on hackathon compute
-- add per-task replay traces for all scenarios
-- wire deployment profile selection directly into environment reset
-- publish HF Space and remote OpenEnv client package
-- add richer browser animation and side-by-side baseline vs improved replay
+Drone delivery is not just about flying. It is about decision-making under uncertainty. DroneZ shifts the focus from fixed routes to adaptive fleet intelligence, where actions are evaluated through rewards and policies can move toward safer, faster, and more reliable delivery operations.

@@ -14,6 +14,7 @@
     "demo",
     "hard"
   ],
+  "candidate_choice_default": true,
   "dependency_status": {
     "datasets": true,
     "transformers": true,
@@ -26,6 +27,16 @@
     "gpu_available": false,
     "dtype": null,
     "torch_version": "2.9.1"
+  },
+  "generation_safety": {
+    "hf_safe_generation": false,
+    "use_safe_sampling": false,
+    "remove_invalid_values": false,
+    "renormalize_logits": false
+  },
+  "sampling_model": {
+    "enabled": false,
+    "dtype": null
   },
   "output_dir": "artifacts/training/local_sanity"
 }
