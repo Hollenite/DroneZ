@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DroneZ World Simulator</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div id="boot">
+      <div class="boot-card">
+        <span>DroneZ World Simulator</span>
+        <h1>Loading 3D fleet world...</h1>
+        <p>If the 3D module cannot load, serve this folder with internet access for the Three.js CDN.</p>
+      </div>
+    </div>
+
+    <main class="sim-shell">
+      <section class="viewport">
+        <div id="world"></div>
+        <div class="film-bars"></div>
+        <div class="hud top-left">
+          <p class="kicker">DroneZ premium simulation layer</p>
+          <h1>Hybrid Drone World</h1>
+          <p>
+            3D fleet simulator for mission-level RL: PID/sensors stabilize each drone,
+            while the control-tower AI assigns, reroutes, charges, and prioritizes missions.
+          </p>
+        </div>
+
+        <div class="hud top-right">
+          <div class="status-row"><span>Mode</span><b id="modeLabel">Operations</b></div>
+          <div class="status-row"><span>Fleet</span><b>42 drones</b></div>
+          <div class="status-row"><span>Weather</span><b id="weatherLabel">Clear</b></div>
+          <div class="status-row"><span>GRPO</span><b class="warn">not proven</b></div>
+        </div>
+
+        <div class="hud bottom-center">
+          <button data-mode="operations">Operations</button>
+          <button data-mode="follow">Drone Follow</button>
+          <button data-mode="cinematic">Cinematic Film</button>
+          <button data-mode="warehouse">Warehouse</button>
+          <button id="launchBtn">Launch Fleet</button>
+        </div>
+
+        <canvas id="minimap" width="360" height="260" aria-label="2D tactical minimap"></canvas>
+      </section>
+
+      <aside class="control-panel">
+        <section class="panel hero-panel">
+          <p class="kicker">Selected drone</p>
+          <h2 id="droneName">DZ-01</h2>
+          <select id="droneSelect" aria-label="Switch drone"></select>
+          <div class="drone-class" id="droneClass">Medical priority drone</div>
+        </section>
+
+        <section class="panel telemetry">
+          <p class="kicker">Live telemetry</p>
+          <div id="telemetryGrid" class="telemetry-grid"></div>
+        </section>
+
+        <section class="panel">
+          <p class="kicker">Mission route</p>
+          <h3 id="routeName">Hub → Hospital</h3>
+          <p id="routeStatus">
+            Active route uses safe corridor geometry and dynamically reroutes around no-fly/weather volumes.
+          </p>
+          <div class="route-legend">
+            <span><i class="green"></i>safe</span>
+            <span><i class="yellow"></i>weather risk</span>
+            <span><i class="red"></i>blocked</span>
+            <span><i class="violet"></i>active</span>
+          </div>
+        </section>
+
+        <section class="panel">
+          <p class="kicker">Control tower / parent brain</p>
+          <ul class="tower-list">
+            <li><b>Dispatch:</b> urgent medical orders first</li>
+            <li><b>Routing:</b> avoid storm/no-fly volumes</li>
+            <li><b>Safety:</b> low-level PID + sensor fusion stays onboard</li>
+            <li><b>RL role:</b> mission-level fleet decisions only</li>
+          </ul>
+        </section>
+
+        <section class="panel warning-panel">
+          <p class="kicker">Training truth</p>
+          <h3>Real GRPO reward improvement is not proven yet.</h3>
+          <p>
+            This simulator can replay DroneZ traces, but it does not fake learning.
+            The current proven result is deterministic improved policy behavior.
+            The honest next step is SFT action-format warm start + candidate-choice GRPO.
+          </p>
+        </section>
+      </aside>
+    </main>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
