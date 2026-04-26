@@ -54,6 +54,11 @@ controls.enableDamping=true;controls.dampingFactor=0.06;
 controls.maxPolarAngle=Math.PI*0.48;controls.minDistance=30;controls.maxDistance=820;
 controls.target.set(0,28,0);
 
+// Track user manual orbit — pause auto-camera when user is dragging
+let userOrbitActive=false, userOrbitTimer=0;
+controls.addEventListener('start',()=>{userOrbitActive=true;userOrbitTimer=4;});
+controls.addEventListener('end',()=>{userOrbitActive=false;});
+
 const worldGroup=new THREE.Group();scene.add(worldGroup);
 const lights=setupLighting(scene);
 buildWorld(worldGroup);
@@ -237,6 +242,13 @@ function animateWorld(dt,t){
 
 // === CAMERA MODES ===
 function moveCamera(dt,t){
+  // Count down user orbit override timer
+  if(userOrbitTimer>0){userOrbitTimer-=dt;}
+  // If user is dragging or recently dragged, let them control freely
+  if(userOrbitActive||userOrbitTimer>0)return;
+  // Free orbit mode — never auto-position
+  if(state.camMode==="freeorbit")return;
+
   const target=drones[state.selectedIdx].group;
   const cm=state.camMode;
 
@@ -366,10 +378,30 @@ function onResize(){
 window.addEventListener("resize",onResize);
 
 // === UI BINDINGS ===
-droneSel.addEventListener("change",()=>{state.selectedIdx=Number(droneSel.value);});
-cameraSel.addEventListener("change",()=>{state.camMode=cameraSel.value;});
-prevDroneBtn?.addEventListener("click",()=>{state.selectedIdx=(state.selectedIdx-1+DRONE_COUNT)%DRONE_COUNT;droneSel.value=String(state.selectedIdx);});
-nextDroneBtn?.addEventListener("click",()=>{state.selectedIdx=(state.selectedIdx+1)%DRONE_COUNT;droneSel.value=String(state.selectedIdx);});
+droneSel.addEventListener("change",()=>{
+  state.selectedIdx=Number(droneSel.value);
+  userOrbitTimer=0; // reset orbit override so camera snaps to new drone
+  const d=drones[state.selectedIdx].group.userData;
+  toast(`🎯 Now tracking ${d.id} — ${d.type.name}`,"info");
+});
+cameraSel.addEventListener("change",()=>{
+  state.camMode=cameraSel.value;
+  userOrbitTimer=0; // reset so auto-cam takes over for the new mode
+});
+prevDroneBtn?.addEventListener("click",()=>{
+  state.selectedIdx=(state.selectedIdx-1+DRONE_COUNT)%DRONE_COUNT;
+  droneSel.value=String(state.selectedIdx);
+  userOrbitTimer=0;
+  const d=drones[state.selectedIdx].group.userData;
+  toast(`◀ ${d.id} — ${d.type.name}`,"info");
+});
+nextDroneBtn?.addEventListener("click",()=>{
+  state.selectedIdx=(state.selectedIdx+1)%DRONE_COUNT;
+  droneSel.value=String(state.selectedIdx);
+  userOrbitTimer=0;
+  const d=drones[state.selectedIdx].group.userData;
+  toast(`▶ ${d.id} — ${d.type.name}`,"info");
+});
 playBtn.addEventListener("click",()=>{state.playing=true;toast("▶ Simulation running","info");});
 pauseBtn.addEventListener("click",()=>{state.playing=false;});
 resetBtn.addEventListener("click",()=>{
