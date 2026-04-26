@@ -49,20 +49,14 @@ DroneZ turns drone delivery operations into a reward-driven OpenEnv environment 
 | Resource | Link |
 | --- | --- |
 | Hugging Face Space Repository | https://huggingface.co/spaces/Krishna2521/dronez-openenv |
+| Showcase Folder | https://drive.google.com/drive/folders/1EvQvEcNg9AasMICUYt_AkMDGtoTlMbJE?usp=sharing |
 | Live Runtime | https://krishna2521-dronez-openenv.hf.space |
 | Live Demo | https://krishna2521-dronez-openenv.hf.space/demo/index.html |
 | API Docs | https://krishna2521-dronez-openenv.hf.space/docs |
 | Health Check | https://krishna2521-dronez-openenv.hf.space/health |
 | Team GitHub Repo | https://github.com/Hollenite/DroneZ.git |
-| Public Colab Notebook | https://colab.research.google.com/drive/1ge0s9eYcbeE25oEXh6t-wySGh3ZCR9AV |
-| Local Notebook | [notebooks/train_dronez_grpo_colab.ipynb](notebooks/train_dronez_grpo_colab.ipynb) |
 | Blog / Writeup | [BLOG.md](BLOG.md) |
-| Showcase Folder | https://drive.google.com/drive/folders/1EvQvEcNg9AasMICUYt_AkMDGtoTlMbJE?usp=sharing |
-| Pitch | [PITCH.md](PITCH.md) |
-| Submission Checklist | [SUBMISSION_CHECKLIST.md](SUBMISSION_CHECKLIST.md) |
 | Full Documentation | [docs/README.md](docs/README.md) |
-| YouTube Demo | TODO: add public URL before final form submission |
-| Slides | TODO: add public URL before final form submission |
 
 ## 🧠 What DroneZ Actually Is
 
@@ -191,8 +185,7 @@ Demo takeaway: the deterministic improved policy keeps the same delivery count a
 ## 🧪 Training Status
 
 The current proven improvement is deterministic policy improvement, not trained-model reward improvement.
-
-A real GRPO-style run was attempted on an NVIDIA RTX 5060 Laptop GPU using `Qwen/Qwen2.5-0.5B-Instruct`. That run did not improve reward: model actions were invalid, episodes hit `invalid_action_cap_reached`, reward stayed flat, loss stayed `0.0`, and `eval_after` did not beat `eval_before`.
+A real GRPO-style run was attempted on an NVIDIA RTX 5060 Laptop GPU using `Qwen/Qwen2.5-0.5B-Instruct`.
 
 What was improved after that failure:
 
