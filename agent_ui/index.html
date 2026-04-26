@@ -8,6 +8,13 @@
   </head>
   <body>
     <main class="shell">
+      <aside class="staging-banner">
+        <strong>Staging copy with Agent Playground.</strong>
+        Official submitted Space remains
+        <a href="https://huggingface.co/spaces/Krishna2521/dronez-openenv">Krishna2521/dronez-openenv</a>.
+        This page is for safe post-submission testing before any future copy-back decision.
+      </aside>
+
       <header class="hero">
         <div>
           <p class="eyebrow">Interactive OpenEnv Runtime</p>
@@ -56,6 +63,19 @@
         <button id="stepBtn" class="accent">Step Action</button>
       </section>
 
+      <section class="learn-card">
+        <div>
+          <p class="eyebrow">How to train your agent</p>
+          <h2>Use the same loop from code: reset, read observation, choose action, step, learn from reward.</h2>
+        </div>
+        <ol>
+          <li><b>Reset</b> creates a task episode and returns the first observation.</li>
+          <li><b>Valid actions</b> gives safe candidate JSON actions for the current state.</li>
+          <li><b>Step</b> applies one action and returns the next observation, reward, done, and info.</li>
+          <li><b>Train</b> by repeating this loop from Python, Colab, TRL, GRPO, or your own agent.</li>
+        </ol>
+      </section>
+
       <section class="grid">
         <article class="panel observation-panel">
           <div class="panel-head">
@@ -70,6 +90,7 @@
             <h2>Valid Actions</h2>
             <span id="actionCount">0 candidates</span>
           </div>
+          <p class="panel-note">Click one candidate to fill the Action Editor. These candidates are generated from the active environment state, so they are ideal for agents and candidate-choice training.</p>
           <div id="validActions" class="action-list"></div>
         </article>
 
@@ -88,9 +109,9 @@
             <span id="doneLabel">not done</span>
           </div>
           <div class="metric-row">
-            <div><span>Last reward</span><b id="lastReward">0.0</b></div>
-            <div><span>Done</span><b id="doneValue">false</b></div>
-            <div><span>Reason</span><b id="reasonValue">ongoing</b></div>
+            <div class="reward-tile"><span>Last reward</span><b id="lastReward">0.0</b></div>
+            <div class="done-tile"><span>Done</span><b id="doneValue">false</b></div>
+            <div class="reason-tile"><span>Reason</span><b id="reasonValue">ongoing</b></div>
           </div>
           <pre id="responseBox">{}</pre>
         </article>
