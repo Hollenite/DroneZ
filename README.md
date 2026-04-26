@@ -21,13 +21,13 @@ license: mit
 </p>
 
 <p align="center">
-  <a href="https://krishna2521-dronez-openenv.hf.space">Live Runtime</a>
+  <a href="https://krishna2521-dronez-openenv.hf.space" target="_blank" rel="noopener noreferrer">Live Runtime</a>
   ·
-  <a href="https://krishna2521-dronez-openenv.hf.space/demo/index.html">Control Tower Demo</a>
+  <a href="https://krishna2521-dronez-openenv.hf.space/demo/index.html" target="_blank" rel="noopener noreferrer">Control Tower Demo</a>
   ·
-  <a href="https://krishna2521-dronez-openenv.hf.space/docs">API Docs</a>
+  <a href="https://krishna2521-dronez-openenv.hf.space/docs" target="_blank" rel="noopener noreferrer">API Docs</a>
   ·
-  <a href="https://huggingface.co/spaces/Krishna2521/dronez-openenv">HF Space</a>
+  <a href="https://huggingface.co/spaces/Krishna2521/dronez-openenv" target="_blank" rel="noopener noreferrer">HF Space</a>
   ·
   <a href="docs/README.md">Docs</a>
 </p>
