@@ -1,0 +1,74 @@
+{
+  "mode": "local-grpo",
+  "status": "blocked",
+  "training_executed": false,
+  "note": "A real candidate-choice GRPO command was requested, but the run stopped before model loading or optimizer updates. This is an honest blocked-run artifact, not a training success claim.",
+  "reason": "Local GRPO training requires a CUDA-enabled GPU runtime.",
+  "blocked_reason": "Local GRPO training requires a CUDA-enabled GPU runtime.",
+  "exception_type": "RuntimeError",
+  "traceback_tail": [
+    "Traceback (most recent call last):",
+    "  File \"<repo>/scripts/train_grpo_local.py\", line 1218, in main",
+    "    result_paths = trainer.run()",
+    "                   ^^^^^^^^^^^^^",
+    "  File \"<repo>/scripts/train_grpo_local.py\", line 155, in run",
+    "    self._validate_training_environment()",
+    "  File \"<repo>/scripts/train_grpo_local.py\", line 779, in _validate_training_environment",
+    "    raise RuntimeError(\"Local GRPO training requires a CUDA-enabled GPU runtime.\")",
+    "RuntimeError: Local GRPO training requires a CUDA-enabled GPU runtime."
+  ],
+  "recommendation": "Restart the Colab runtime if CUDA reported a device-side assert, then retry the safe smoke command with --safe-generation --no-sampling --learning-rate 1e-6 --max-new-tokens 16. Keep the dry-run, format-check, and SFT artifacts for submission.",
+  "command_attempted": "train_grpo_local.py --real-train --candidate-choice --safe-generation --no-sampling --model Qwen/Qwen2.5-0.5B-Instruct --tasks easy --eval-tasks easy --episodes 2 --group-size 1 --learning-rate 1e-6 --max-new-tokens 16 --output-dir artifacts/training/candidate_grpo_smoke",
+  "selected_model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "candidate_choice": true,
+  "curriculum": [
+    "easy"
+  ],
+  "eval_tasks": [
+    "easy"
+  ],
+  "dependency_status": {
+    "datasets": true,
+    "transformers": true,
+    "trl": true,
+    "accelerate": true,
+    "torch": true,
+    "peft": true
+  },
+  "device": {
+    "gpu_available": false,
+    "dtype": null,
+    "torch_version": "2.9.1"
+  },
+  "format_check_reference": {
+    "path": "artifacts/training/format_check/format_check.json",
+    "valid_json_rate": 0.875,
+    "valid_action_rate": 0.875,
+    "top_invalid_reasons": {
+      "valid": 14,
+      "no_json_object": 2
+    }
+  },
+  "hyperparameters": {
+    "seed": 42,
+    "episodes": 2,
+    "group_size": 1,
+    "learning_rate": 1e-06,
+    "max_grad_norm": 0.5,
+    "max_new_tokens": 16,
+    "max_prompt_tokens": 1536,
+    "temperature": 0.9,
+    "top_p": 0.95,
+    "safe_generation": true,
+    "no_sampling": true,
+    "max_continuation_steps": 64,
+    "max_actions": null
+  },
+  "reward_improved": null,
+  "mean_reward_delta": null,
+  "warnings": [
+    "No optimizer updates were run.",
+    "No eval_before/eval_after reward comparison exists for this blocked run.",
+    "Artifacts are still usable as honest evidence of the attempted training path."
+  ]
+}

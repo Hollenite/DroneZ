@@ -222,6 +222,19 @@ Colab path:
 
 The notebook runs dry-run setup, action-format diagnostics, SFT data generation, plot display, artifact zipping, and optional candidate-choice GRPO if a GPU is available.
 
+For Colab real training, start with the safe smoke command:
+
+```bash
+python scripts/train_grpo_local.py --real-train --candidate-choice --safe-generation --no-sampling \
+  --model Qwen/Qwen2.5-0.5B-Instruct \
+  --tasks easy --eval-tasks easy \
+  --episodes 2 --group-size 1 \
+  --learning-rate 1e-6 --max-new-tokens 16 \
+  --output-dir artifacts/training/candidate_grpo_smoke
+```
+
+If CUDA reports a device-side assert, restart the Colab runtime before retrying.
+
 ## 🖥️ Demos
 
 ### Hugging Face Control Tower Demo

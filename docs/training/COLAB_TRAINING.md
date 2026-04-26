@@ -68,27 +68,35 @@ python scripts/generate_sft_action_data.py --tasks easy,medium,demo,hard --outpu
 
 ### Real Training (GPU only)
 
-Primary:
+Start with the safe smoke run. It avoids the CUDA probability-sampling failure by using greedy candidate-choice generation.
+
+If Colab ever shows `CUDA error: device-side assert triggered`, restart the runtime before retrying. CUDA device asserts can poison the runtime, so rerunning only the failed cell may keep failing.
+
+Safe smoke run:
 ```bash
-python scripts/train_grpo_local.py --real-train --candidate-choice \
+python scripts/train_grpo_local.py --real-train --candidate-choice --safe-generation --no-sampling \
+  --model Qwen/Qwen2.5-0.5B-Instruct \
+  --tasks easy \
+  --eval-tasks easy \
+  --episodes 2 --group-size 1 \
+  --learning-rate 1e-6 \
+  --max-new-tokens 16 \
+  --output-dir artifacts/training/candidate_grpo_smoke
+```
+
+If the smoke run completes, optional longer run:
+```bash
+python scripts/train_grpo_local.py --real-train --candidate-choice --safe-generation --no-sampling \
   --model Qwen/Qwen2.5-0.5B-Instruct \
   --tasks easy,medium,demo \
   --eval-tasks easy,medium,demo,hard \
-  --episodes 20 --group-size 4 \
+  --episodes 10 --group-size 1 \
+  --learning-rate 1e-6 \
+  --max-new-tokens 16 \
   --output-dir artifacts/training/candidate_grpo
 ```
 
-Smaller fallback (low VRAM):
-```bash
-python scripts/train_grpo_local.py --real-train --candidate-choice \
-  --model Qwen/Qwen2.5-0.5B-Instruct \
-  --tasks easy,demo \
-  --eval-tasks easy,demo \
-  --episodes 5 --group-size 2 \
-  --output-dir artifacts/training/candidate_grpo_small
-```
-
-If CUDA/GPU is unavailable, the notebook skips real training gracefully and still produces dry-run, diagnostics, SFT data, plots, and a summary.
+If CUDA/GPU is unavailable, the notebook skips real training gracefully and still produces dry-run, diagnostics, SFT data, plots, and a summary. If real training fails, it writes an honest blocked-run artifact instead of ending with only a confusing traceback.
 
 ## Expected Outputs
 

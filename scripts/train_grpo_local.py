@@ -6,8 +6,10 @@ import hashlib
 import importlib.util
 import inspect
 import json
+import math
 import os
 import random
+import traceback
 import sys
 import time
 from pathlib import Path
@@ -44,7 +46,7 @@ SAFE_REPETITION_PENALTY = 1.05
 TRAINING_DEFAULT_CANDIDATE_CHOICE = True
 ACTION_GENERATION_TEMPERATURE = 0.35
 ACTION_GENERATION_TOP_P = 0.9
-ACTION_GENERATION_MAX_NEW_TOKENS = 48
+ACTION_GENERATION_MAX_NEW_TOKENS = 32
 PROMPT_PREVIEW_CHARS = 512
 FAILED_EXAMPLE_LIMIT = 3
 
@@ -83,6 +85,8 @@ class LocalGRPOTrainer:
         self.generation_safety_flags: dict[str, Any] = {
             "hf_safe_generation": self.hf_safe_generation,
             "use_safe_sampling": self.use_safe_sampling,
+            "safe_generation": False,
+            "no_sampling": False,
             "remove_invalid_values": False,
             "renormalize_logits": False,
         }
@@ -95,6 +99,10 @@ class LocalGRPOTrainer:
         self.sampling_tokenizer = None
         self.sampling_device = None
         self.skipped_nonfinite_updates = 0
+        self.skipped_no_signal_updates = 0
+        self.generation_failure_count = 0
+        self.invalid_generation_count = 0
+        self.gradient_norm_history: list[float] = []
         self.latest_generation_kwargs: dict[str, Any] = {}
         self.latest_generation_used_sampling_model = False
         self.latest_generation_hf_safe = self.hf_safe_generation
@@ -121,6 +129,12 @@ class LocalGRPOTrainer:
         self.latest_generation_use_cache = False
         self.latest_generation_do_sample = False
         self.training_candidate_choice = False if args.disable_training_candidate_choice else (TRAINING_DEFAULT_CANDIDATE_CHOICE if args.candidate_choice is None else bool(args.candidate_choice))
+        self.safe_generation = bool(
+            getattr(args, "safe_generation", False)
+            or getattr(args, "no_sampling", False)
+            or self.training_candidate_choice
+        )
+        self.training_generation_do_sample = not bool(getattr(args, "no_sampling", False) or self.safe_generation)
         self.training_generation_temperature = min(self.args.temperature, self.args.action_temperature)
         self.training_generation_top_p = min(self.args.top_p, self.args.action_top_p)
         self.training_generation_max_new_tokens = min(self.args.max_new_tokens, self.args.action_max_new_tokens)
@@ -172,10 +186,13 @@ class LocalGRPOTrainer:
                 "episodes": self.args.episodes,
                 "group_size": self.args.group_size,
                 "learning_rate": self.args.learning_rate,
+                "max_grad_norm": getattr(self.args, "max_grad_norm", 0.5),
                 "max_new_tokens": self.args.max_new_tokens,
                 "max_prompt_tokens": self.args.max_prompt_tokens,
                 "temperature": self.args.temperature,
                 "top_p": self.args.top_p,
+                "safe_generation": getattr(self.args, "safe_generation", False),
+                "no_sampling": getattr(self.args, "no_sampling", False),
                 "max_continuation_steps": self.args.max_continuation_steps,
                 "max_actions": self.args.max_actions,
             },
@@ -186,6 +203,9 @@ class LocalGRPOTrainer:
             },
             "action_generation": {
                 "candidate_choice_default": self.training_candidate_choice,
+                "safe_generation": self.safe_generation,
+                "no_sampling": getattr(self.args, "no_sampling", False),
+                "do_sample": self.training_generation_do_sample,
                 "temperature": self.training_generation_temperature,
                 "top_p": self.training_generation_top_p,
                 "max_new_tokens": self.training_generation_max_new_tokens,
@@ -198,6 +218,10 @@ class LocalGRPOTrainer:
             "prompt_length_stats": _prompt_length_stats(self.training_log),
             "completion_length_stats": _completion_length_stats(self.training_log),
             "skipped_nonfinite_updates": self.skipped_nonfinite_updates,
+            "skipped_no_signal_updates": self.skipped_no_signal_updates,
+            "generation_failure_count": self.generation_failure_count,
+            "invalid_generation_count": self.invalid_generation_count,
+            "gradient_norm_history": self.gradient_norm_history,
             "duration_seconds": duration_seconds,
             "training_log": self.training_log,
             "loss_history": self.loss_history,
@@ -265,6 +289,15 @@ class LocalGRPOTrainer:
                 "enabled": self.use_safe_sampling,
                 "dtype": self.sampling_dtype_name,
             },
+            "action_generation": {
+                "candidate_choice_default": self.training_candidate_choice,
+                "safe_generation": self.safe_generation,
+                "no_sampling": getattr(self.args, "no_sampling", False),
+                "do_sample": self.training_generation_do_sample,
+                "temperature": self.training_generation_temperature,
+                "top_p": self.training_generation_top_p,
+                "max_new_tokens": self.training_generation_max_new_tokens,
+            },
             "output_dir": display_path(self.output_dir),
         }
         destination = write_json(self.output_dir / "sanity_check.json", payload)
@@ -295,7 +328,10 @@ class LocalGRPOTrainer:
             prompt_preview = prompt[:PROMPT_PREVIEW_CHARS]
             prompt_hash = hashlib.sha256(prompt.encode("utf-8")).hexdigest()[:16]
             for _ in range(self.args.group_size):
-                raw_text, prompt_ids, completion_ids = self._generate_completion(prompt, do_sample=True)
+                raw_text, prompt_ids, completion_ids = self._generate_completion(
+                    prompt,
+                    do_sample=self.training_generation_do_sample,
+                )
                 parse_result = parse_llm_action(raw_text, observation=observation, candidate_actions=candidate_actions)
                 action = parse_result.action
                 estimate = self._evaluate_candidate(env, action)
@@ -349,23 +385,34 @@ class LocalGRPOTrainer:
                 advantages = (rewards - rewards.mean()) / (rewards.std(unbiased=False) + 1e-6)
             else:
                 advantages = self._torch.zeros_like(rewards)
-            no_learning_signal = bool(rewards.numel() > 1 and float(rewards.std(unbiased=False).detach().cpu()) < 1e-6)
+            no_learning_signal = bool(rewards.numel() <= 1 or float(rewards.std(unbiased=False).detach().cpu()) < 1e-6)
 
             self.optimizer.zero_grad(set_to_none=True)
             losses = []
-            for advantage, candidate in zip(advantages, candidates):
-                logprob = self._mean_logprob_of_completion(candidate["prompt_ids"], candidate["completion_ids"])
-                losses.append(-advantage.detach() * logprob)
-            loss = self._torch.stack(losses).mean()
-            should_step = True
-            if self.hf_safe_generation and not bool(self._torch.isfinite(loss).all().item()):
+            if no_learning_signal:
+                self.skipped_no_signal_updates += 1
+                loss = self._torch.tensor(0.0, dtype=self._torch.float32, device=self.device)
+                should_step = False
+            else:
+                for advantage, candidate in zip(advantages, candidates):
+                    logprob = self._mean_logprob_of_completion(candidate["prompt_ids"], candidate["completion_ids"])
+                    if not bool(self._torch.isfinite(logprob).all().item()):
+                        self.skipped_nonfinite_updates += 1
+                        continue
+                    losses.append(-advantage.detach() * logprob)
+                loss = self._torch.stack(losses).mean() if losses else self._torch.tensor(0.0, dtype=self._torch.float32, device=self.device)
+                should_step = bool(losses)
+            if not bool(self._torch.isfinite(loss).all().item()):
                 should_step = False
                 self.skipped_nonfinite_updates += 1
                 self.optimizer.zero_grad(set_to_none=True)
-            else:
+            elif should_step:
                 loss.backward()
-                self._torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
-                if self.hf_safe_generation and self._has_nonfinite_gradients():
+                grad_norm = self._torch.nn.utils.clip_grad_norm_(self.model.parameters(), getattr(self.args, "max_grad_norm", 0.5))
+                grad_norm_value = float(grad_norm.detach().float().cpu()) if hasattr(grad_norm, "detach") else float(grad_norm)
+                if math.isfinite(grad_norm_value):
+                    self.gradient_norm_history.append(round(grad_norm_value, 6))
+                if self._has_nonfinite_gradients():
                     should_step = False
                     self.skipped_nonfinite_updates += 1
                     self.optimizer.zero_grad(set_to_none=True)
@@ -610,6 +657,10 @@ class LocalGRPOTrainer:
                     generation_kwargs["renormalize_logits"] = True
             self.last_generation_stop_reason = "max_new_tokens"
         else:
+            if self.remove_invalid_values_supported:
+                generation_kwargs["remove_invalid_values"] = True
+            if self.renormalize_logits_supported:
+                generation_kwargs["renormalize_logits"] = True
             self.last_generation_stop_reason = "eos_or_length"
 
         self.latest_generation_kwargs = {
@@ -647,7 +698,18 @@ class LocalGRPOTrainer:
             self.last_prompt_preview = prompt[:PROMPT_PREVIEW_CHARS]
             self.last_prompt_hash = hashlib.sha256(prompt.encode("utf-8")).hexdigest()[:16]
             self.last_prompt_char_length = len(prompt)
-            outputs = generator_model.generate(**generation_kwargs)
+            if self.safe_generation:
+                self._assert_generation_logits_finite(generator_model, input_ids, attention_mask, generator_kind)
+            try:
+                outputs = generator_model.generate(**generation_kwargs)
+            except RuntimeError as exc:
+                self.generation_failure_count += 1
+                raise RuntimeError(
+                    "Model generation failed before producing an action. "
+                    f"generator={generator_kind}, do_sample={do_sample}, "
+                    f"safe_generation={self.safe_generation}, max_new_tokens={generation_kwargs['max_new_tokens']}. "
+                    "If this was a CUDA device-side assert, restart the Colab runtime before retrying."
+                ) from exc
 
         prompt_length = input_ids.shape[1]
         completion_ids = outputs[0, prompt_length:].detach().cpu()
@@ -657,6 +719,21 @@ class LocalGRPOTrainer:
             completion_ids = self._torch.tensor([generator_tokenizer.eos_token_id], dtype=self._torch.long)
         text = generator_tokenizer.decode(completion_ids, skip_special_tokens=True)
         return text, input_ids[0].detach().cpu(), completion_ids
+
+    def _assert_generation_logits_finite(self, model, input_ids, attention_mask, generator_kind: str) -> None:
+        if not callable(model):
+            return
+        outputs = model(input_ids=input_ids, attention_mask=attention_mask, use_cache=False)
+        logits = outputs.logits[:, -1, :].float()
+        if not bool(self._torch.isfinite(logits).all().item()):
+            self.invalid_generation_count += 1
+            finite_count = int(self._torch.isfinite(logits).sum().detach().cpu())
+            total_count = int(logits.numel())
+            raise RuntimeError(
+                "Non-finite logits detected before generation. "
+                f"generator={generator_kind}, finite_logits={finite_count}/{total_count}. "
+                "Skipping generation to avoid invalid CUDA probability sampling."
+            )
 
     def _mean_logprob_of_completion(self, prompt_ids_cpu, completion_ids_cpu):
         prompt_ids = prompt_ids_cpu.to(self.device)
@@ -672,8 +749,10 @@ class LocalGRPOTrainer:
         start = prompt_length - 1
         completion_logits = logits[:, start : start + completion_length, :]
         completion_targets = targets[:, start : start + completion_length]
-        if self.hf_safe_generation:
-            completion_logits = completion_logits.float()
+        completion_logits = completion_logits.float()
+        if not bool(self._torch.isfinite(completion_logits).all().item()):
+            self.invalid_generation_count += 1
+            completion_logits = self._torch.nan_to_num(completion_logits, nan=-1e9, posinf=1e9, neginf=-1e9)
         token_logprobs = self._torch.log_softmax(completion_logits, dim=-1).gather(
             -1, completion_targets.unsqueeze(-1)
         ).squeeze(-1)
@@ -741,6 +820,8 @@ class LocalGRPOTrainer:
         self.generation_safety_flags = {
             "hf_safe_generation": self.hf_safe_generation,
             "use_safe_sampling": self.use_safe_sampling,
+            "safe_generation": self.safe_generation,
+            "no_sampling": getattr(self.args, "no_sampling", False),
             "remove_invalid_values": self.remove_invalid_values_supported,
             "renormalize_logits": self.renormalize_logits_supported,
             "training_dtype": self.training_dtype_name,
@@ -801,13 +882,16 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--episodes", type=int, default=6)
     parser.add_argument("--group-size", type=int, default=4)
     parser.add_argument("--learning-rate", type=float, default=1e-6)
-    parser.add_argument("--max-new-tokens", type=int, default=64)
+    parser.add_argument("--max-new-tokens", type=int, default=32)
     parser.add_argument("--max-prompt-tokens", type=int, default=1536)
     parser.add_argument("--temperature", type=float, default=0.9)
     parser.add_argument("--top-p", type=float, default=0.95)
     parser.add_argument("--action-temperature", type=float, default=ACTION_GENERATION_TEMPERATURE)
     parser.add_argument("--action-top-p", type=float, default=ACTION_GENERATION_TOP_P)
     parser.add_argument("--action-max-new-tokens", type=int, default=ACTION_GENERATION_MAX_NEW_TOKENS)
+    parser.add_argument("--safe-generation", action="store_true", help="Pre-check logits and use conservative generation settings for real training.")
+    parser.add_argument("--no-sampling", action="store_true", help="Disable multinomial sampling and use greedy generation for candidate-choice training.")
+    parser.add_argument("--max-grad-norm", type=float, default=0.5, help="Gradient clipping threshold for real local training.")
     parser.add_argument("--disable-training-candidate-choice", action="store_true", help="Disable candidate-choice prompting for the local GRPO training loop only.")
     parser.add_argument("--max-continuation-steps", type=int, default=64)
     parser.add_argument("--max-actions", type=int, default=None)
@@ -984,7 +1068,13 @@ def _parse_csv_list(raw: str, *, fallback: list[str]) -> list[str]:
     return items or fallback
 
 
-def write_blocked_training_artifacts(args: argparse.Namespace, reason: str) -> dict[str, Path]:
+def write_blocked_training_artifacts(
+    args: argparse.Namespace,
+    reason: str,
+    *,
+    exception_type: str = "RuntimeError",
+    traceback_text: str = "",
+) -> dict[str, Path]:
     output_dir = Path(args.output_dir)
     trainer = LocalGRPOTrainer(args)
     payload = {
@@ -997,21 +1087,34 @@ def write_blocked_training_artifacts(args: argparse.Namespace, reason: str) -> d
             "a training success claim."
         ),
         "reason": reason,
+        "blocked_reason": reason,
+        "exception_type": exception_type,
+        "traceback_tail": _sanitize_traceback_tail(traceback_text),
+        "recommendation": (
+            "Restart the Colab runtime if CUDA reported a device-side assert, then retry the "
+            "safe smoke command with --safe-generation --no-sampling --learning-rate 1e-6 "
+            "--max-new-tokens 16. Keep the dry-run, format-check, and SFT artifacts for submission."
+        ),
+        "command_attempted": " ".join([Path(sys.argv[0]).name, *sys.argv[1:]]),
         "selected_model": args.model,
         "candidate_choice": args.candidate_choice,
         "curriculum": trainer.tasks,
         "eval_tasks": trainer.eval_tasks,
         "dependency_status": trainer.dependencies,
-        "device": trainer._device_summary(),
+        "device": _safe_device_summary(trainer),
+        "format_check_reference": _format_check_reference(),
         "hyperparameters": {
             "seed": args.seed,
             "episodes": args.episodes,
             "group_size": args.group_size,
             "learning_rate": args.learning_rate,
+            "max_grad_norm": getattr(args, "max_grad_norm", 0.5),
             "max_new_tokens": args.max_new_tokens,
             "max_prompt_tokens": args.max_prompt_tokens,
             "temperature": args.temperature,
             "top_p": args.top_p,
+            "safe_generation": getattr(args, "safe_generation", False),
+            "no_sampling": getattr(args, "no_sampling", False),
             "max_continuation_steps": args.max_continuation_steps,
             "max_actions": args.max_actions,
         },
@@ -1020,7 +1123,7 @@ def write_blocked_training_artifacts(args: argparse.Namespace, reason: str) -> d
         "warnings": [
             "No optimizer updates were run.",
             "No eval_before/eval_after reward comparison exists for this blocked run.",
-            "Run the same command on a CUDA GPU machine to produce real training evidence.",
+            "Artifacts are still usable as honest evidence of the attempted training path.",
         ],
     }
     eval_placeholder = {
@@ -1037,6 +1140,51 @@ def write_blocked_training_artifacts(args: argparse.Namespace, reason: str) -> d
             output_dir / "eval_after.json",
             {**eval_placeholder, "mean_reward_delta": None},
         ),
+    }
+
+
+def _safe_device_summary(trainer: LocalGRPOTrainer) -> dict[str, Any]:
+    try:
+        return trainer._device_summary()
+    except Exception as exc:
+        return {
+            "gpu_available": None,
+            "device_summary_error": str(exc),
+            "note": "Device summary could not be collected after a training failure.",
+        }
+
+
+def _sanitize_traceback_tail(traceback_text: str) -> list[str]:
+    if not traceback_text:
+        return []
+    root_text = str(ROOT)
+    sanitized = []
+    for line in traceback_text.splitlines()[-12:]:
+        sanitized.append(line.replace(root_text, "<repo>"))
+    return sanitized
+
+
+def _format_check_reference() -> dict[str, Any]:
+    for path in (
+        ROOT / "artifacts" / "training" / "format_check" / "format_check.json",
+        TRAINING_DIR / "format_check.json",
+    ):
+        try:
+            if path.exists():
+                payload = json.loads(path.read_text())
+                return {
+                    "path": display_path(path),
+                    "valid_json_rate": payload.get("valid_json_rate"),
+                    "valid_action_rate": payload.get("valid_action_rate"),
+                    "top_invalid_reasons": payload.get("top_invalid_reasons"),
+                }
+        except Exception:
+            continue
+    return {
+        "path": None,
+        "valid_json_rate": None,
+        "valid_action_rate": None,
+        "note": "No prior format-check artifact was found.",
     }
 
 
@@ -1074,12 +1222,31 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     except RuntimeError as exc:
         if args.real_train:
-            result_paths = write_blocked_training_artifacts(args, str(exc))
+            result_paths = write_blocked_training_artifacts(
+                args,
+                str(exc),
+                exception_type=type(exc).__name__,
+                traceback_text=traceback.format_exc(),
+            )
             print(f"Wrote blocked run artifact {result_paths['training_metrics']}", file=sys.stderr)
             print(f"Wrote blocked run artifact {result_paths['eval_before']}", file=sys.stderr)
             print(f"Wrote blocked run artifact {result_paths['eval_after']}", file=sys.stderr)
         print(f"Local GRPO training is not ready: {exc}", file=sys.stderr)
         return 2
+    except Exception as exc:
+        if args.real_train:
+            result_paths = write_blocked_training_artifacts(
+                args,
+                str(exc),
+                exception_type=type(exc).__name__,
+                traceback_text=traceback.format_exc(),
+            )
+            print(f"Wrote blocked run artifact {result_paths['training_metrics']}", file=sys.stderr)
+            print(f"Wrote blocked run artifact {result_paths['eval_before']}", file=sys.stderr)
+            print(f"Wrote blocked run artifact {result_paths['eval_after']}", file=sys.stderr)
+            print(f"Local GRPO training stopped with a handled error: {exc}", file=sys.stderr)
+            return 2
+        raise
 
 
 if __name__ == "__main__":

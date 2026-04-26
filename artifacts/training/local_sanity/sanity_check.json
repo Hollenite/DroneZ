@@ -31,12 +31,23 @@
   "generation_safety": {
     "hf_safe_generation": false,
     "use_safe_sampling": false,
+    "safe_generation": false,
+    "no_sampling": false,
     "remove_invalid_values": false,
     "renormalize_logits": false
   },
   "sampling_model": {
     "enabled": false,
     "dtype": null
+  },
+  "action_generation": {
+    "candidate_choice_default": true,
+    "safe_generation": true,
+    "no_sampling": false,
+    "do_sample": false,
+    "temperature": 0.35,
+    "top_p": 0.9,
+    "max_new_tokens": 32
   },
   "output_dir": "artifacts/training/local_sanity"
 }

@@ -1,0 +1,7 @@
+{
+  "status": "not_run",
+  "training_executed": false,
+  "reason": "Local GRPO training requires a CUDA-enabled GPU runtime.",
+  "note": "Evaluation was not run because candidate-choice GRPO did not start.",
+  "mean_reward_delta": null
+}
