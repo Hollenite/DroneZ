@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DroneZ Agent Playground</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">Interactive OpenEnv Runtime</p>
+          <h1>Train / Test Your DroneZ Agent</h1>
+          <p class="lede">
+            This is the actual RL loop: reset -> observation -> action -> step -> reward -> done.
+            Use this playground to inspect observations, choose valid actions, step the environment,
+            and copy starter code for remote agents.
+          </p>
+          <div class="links">
+            <a href="/demo/index.html">Visual Demo</a>
+            <a href="/docs">API Docs</a>
+            <a href="/env-spec">Env Spec</a>
+            <a href="https://colab.research.google.com/drive/1ge0s9eYcbeE25oEXh6t-wySGh3ZCR9AV">Training Notebook</a>
+          </div>
+        </div>
+        <section class="score-card">
+          <span>Episode Reward</span>
+          <strong id="cumulativeReward">0.0</strong>
+          <small id="sessionLabel">No active session</small>
+        </section>
+      </header>
+
+      <section class="loop-strip" aria-label="RL loop">
+        <span>1 Reset</span>
+        <span>2 Observe</span>
+        <span>3 Choose Action</span>
+        <span>4 Step</span>
+        <span>5 Reward / Done</span>
+        <span>6 Learn</span>
+      </section>
+
+      <section class="controls">
+        <label>
+          Task
+          <select id="taskSelect">
+            <option value="easy">easy</option>
+            <option value="medium">medium</option>
+            <option value="hard">hard</option>
+            <option value="demo">demo</option>
+          </select>
+        </label>
+        <button id="resetBtn" class="primary">Reset Environment</button>
+        <button id="stateBtn">Get State</button>
+        <button id="validBtn">Refresh Valid Actions</button>
+        <button id="stepBtn" class="accent">Step Action</button>
+      </section>
+
+      <section class="grid">
+        <article class="panel observation-panel">
+          <div class="panel-head">
+            <h2>Observation JSON</h2>
+            <span id="stepLabel">step 0</span>
+          </div>
+          <pre id="observationBox">{}</pre>
+        </article>
+
+        <article class="panel">
+          <div class="panel-head">
+            <h2>Valid Actions</h2>
+            <span id="actionCount">0 candidates</span>
+          </div>
+          <div id="validActions" class="action-list"></div>
+        </article>
+
+        <article class="panel editor-panel">
+          <div class="panel-head">
+            <h2>Action Editor</h2>
+            <span>editable JSON</span>
+          </div>
+          <textarea id="actionEditor" spellcheck="false">{"action":"prioritize_order","params":{"order_id":"O1"}}</textarea>
+          <p class="hint">Click a candidate action to fill this editor, or write your own JSON action.</p>
+        </article>
+
+        <article class="panel response-panel">
+          <div class="panel-head">
+            <h2>Step Response</h2>
+            <span id="doneLabel">not done</span>
+          </div>
+          <div class="metric-row">
+            <div><span>Last reward</span><b id="lastReward">0.0</b></div>
+            <div><span>Done</span><b id="doneValue">false</b></div>
+            <div><span>Reason</span><b id="reasonValue">ongoing</b></div>
+          </div>
+          <pre id="responseBox">{}</pre>
+        </article>
+      </section>
+
+      <section class="code-grid">
+        <article class="panel">
+          <div class="panel-head">
+            <h2>Copy curl</h2>
+            <button data-copy="curlBox">Copy</button>
+          </div>
+          <pre id="curlBox"></pre>
+        </article>
+        <article class="panel">
+          <div class="panel-head">
+            <h2>Python Agent Loop</h2>
+            <button data-copy="pythonBox">Copy</button>
+          </div>
+          <pre id="pythonBox"></pre>
+        </article>
+      </section>
+    </main>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

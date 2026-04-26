@@ -49,6 +49,8 @@ DroneZ turns drone delivery operations into a reward-driven OpenEnv environment 
 | Resource | Link |
 | --- | --- |
 | Hugging Face Space Repository | https://huggingface.co/spaces/Krishna2521/dronez-openenv |
+| Post-submission Staging Space | https://huggingface.co/spaces/Krishna2521/Meta_Drone_env |
+| Staging Agent Playground | https://krishna2521-meta-drone-env.hf.space/agent |
 | Showcase Folder | https://drive.google.com/drive/folders/1EvQvEcNg9AasMICUYt_AkMDGtoTlMbJE?usp=sharing |
 | Live Runtime | https://krishna2521-dronez-openenv.hf.space |
 | Live Demo | https://krishna2521-dronez-openenv.hf.space/demo/index.html |
@@ -57,6 +59,8 @@ DroneZ turns drone delivery operations into a reward-driven OpenEnv environment 
 | Team GitHub Repo | https://github.com/Hollenite/DroneZ.git |
 | Blog / Writeup | [BLOG.md](BLOG.md) |
 | Full Documentation | [docs/README.md](docs/README.md) |
+
+> Post-submission safety note: the official submitted Space remains `Krishna2521/dronez-openenv`. The `Krishna2521/Meta_Drone_env` Space is a staging environment for safe post-submission agent-playground improvements.
 
 ## 🧠 What DroneZ Actually Is
 
@@ -105,6 +109,52 @@ Each episode simulates a drone delivery operation with:
 - disruptions such as storms, failed drops, urgent-order changes, and restricted zones
 
 The agent sees the world, chooses a structured action, receives a reward, and continues until all orders are resolved or the episode ends.
+
+## 🧪 Use DroneZ as an RL Environment
+
+DroneZ is an interactive environment, not only a replay dashboard. The core agent loop is:
+
+```text
+reset -> observation -> action -> step -> reward + done + info -> repeat
+```
+
+Staging agent playground:
+
+```text
+https://krishna2521-meta-drone-env.hf.space/agent
+```
+
+Useful staging endpoints:
+
+- `GET /env-spec` explains the environment contract.
+- `GET /action-space` lists allowed action names and required parameters.
+- `GET /observation-space` explains observation fields.
+- `POST /valid-actions` returns currently valid candidate actions.
+- `POST /reset` starts an episode.
+- `POST /step` applies one JSON action and returns reward/done/info.
+
+Minimal remote loop:
+
+```python
+import requests
+
+BASE = "https://krishna2521-meta-drone-env.hf.space"
+
+reset = requests.post(f"{BASE}/reset", json={"task_id": "easy"}).json()
+for t in range(20):
+    candidates = requests.post(f"{BASE}/valid-actions", json={}).json()["actions"]
+    action = candidates[0]["action"]
+    result = requests.post(f"{BASE}/step", json={"action": action}).json()
+    print(result["reward"], result["done"], result["info"].get("done_reason"))
+    if result["done"]:
+        break
+```
+
+Visual demo vs environment API:
+
+- `demo_ui/` visualizes traces and explains the hybrid drone control-tower story.
+- `/reset`, `/step`, `/state`, and `/valid-actions` are the actual interactive RL API.
+- `examples/` contains remote agent scripts for calling the deployed Space.
 
 ## 🎮 Action Space
 
