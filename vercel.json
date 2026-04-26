@@ -1,0 +1,6 @@
+{
+  "version": 2,
+  "installCommand": null,
+  "buildCommand": null,
+  "outputDirectory": "simulator_public"
+}

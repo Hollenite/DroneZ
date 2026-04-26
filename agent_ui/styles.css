@@ -124,6 +124,7 @@ h2 {
 }
 
 .links a,
+.disabled-link,
 button {
   border: 1px solid var(--line);
   border-radius: 999px;
@@ -134,6 +135,12 @@ button {
   text-decoration: none;
   cursor: pointer;
   box-shadow: 0 10px 30px rgba(32, 68, 92, 0.08);
+}
+
+.disabled-link {
+  color: var(--muted);
+  cursor: default;
+  opacity: 0.82;
 }
 
 button.primary,
