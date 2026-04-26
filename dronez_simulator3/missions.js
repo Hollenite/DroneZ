@@ -43,7 +43,10 @@ export function createMission(droneIdx, orderId) {
   const pkg = PACKAGES[droneIdx % PACKAGES.length];
   const pickup = ZONES[droneIdx % ZONES.length];
   const delivery = ZONES[(droneIdx + 4) % ZONES.length];
-  const altitudeLane = 60 + (droneIdx % 5) * 25; // altitude separation
+  const altitudeLane = 160 + (droneIdx % 6) * 20; // altitude separation (160-260m, above tallest buildings ~138m)
+  // Each drone gets a unique pad offset so they don't stack in warehouse
+  const padCol = droneIdx % 7, padRow = Math.floor(droneIdx / 7) % 7;
+  const padOffset = [-80 + padCol * 24, -52 + padRow * 17]; // matches warehouse pad grid
 
   return {
     orderId: `O-${String(orderId).padStart(4, "0")}`,
@@ -52,21 +55,18 @@ export function createMission(droneIdx, orderId) {
     pickup,
     delivery,
     altitudeLane,
-    phase: -1, // not started
+    padOffset, // unique warehouse position for this drone
+    phase: -1,
     phaseTimer: 0,
-    progress: 0, // 0-1 within current movement phase
+    progress: 0,
     totalTime: 0,
     batteryUsed: 0,
     noFlyAvoided: 1,
     rerouted: false,
-    deliveryStyle: droneIdx % 3 === 0 ? "winch" : "landing", // alternate styles
+    deliveryStyle: droneIdx % 3 === 0 ? "winch" : "landing",
     done: false,
-
-    // Computed route waypoints (set during phase transitions)
-    legWaypoints: [], // current leg waypoints
+    legWaypoints: [],
     legIndex: 0,
-
-    // Assignment reason
     assignReason: droneIdx % 2 === 0
       ? "Full battery, correct payload capacity, safe route available"
       : "Closest available drone, priority match, weather-clear corridor",
@@ -80,22 +80,28 @@ function computeLeg(fromXZ, toXZ, altitude) {
   const [fx, fz] = fromXZ;
   const [tx, tz] = toXZ;
   const noFlyX = -30, noFlyZ = -210, noFlyR = 80;
-
-  // Check if direct path crosses no-fly zone
-  const mx = (fx + tx) / 2, mz = (fz + tz) / 2;
-  const distToNoFly = Math.sqrt((mx - noFlyX) ** 2 + (mz - noFlyZ) ** 2);
+  const stormX = 170, stormZ = -180, stormR = 110;
 
   const waypoints = [[fx, altitude, fz]];
 
-  if (distToNoFly < noFlyR + 40) {
-    // Route around no-fly zone
-    const angle = Math.atan2(mz - noFlyZ, mx - noFlyX);
-    const avoidX = noFlyX + Math.cos(angle + Math.PI / 2) * (noFlyR + 50);
-    const avoidZ = noFlyZ + Math.sin(angle + Math.PI / 2) * (noFlyR + 50);
+  // Check multiple hazard zones
+  const mx = (fx + tx) / 2, mz = (fz + tz) / 2;
+  const distNoFly = Math.sqrt((mx - noFlyX) ** 2 + (mz - noFlyZ) ** 2);
+  const distStorm = Math.sqrt((mx - stormX) ** 2 + (mz - stormZ) ** 2);
+
+  if (distNoFly < noFlyR + 50) {
+    const angle = Math.atan2(fz - noFlyZ, fx - noFlyX);
+    const avoidX = noFlyX + Math.cos(angle + Math.PI / 2) * (noFlyR + 60);
+    const avoidZ = noFlyZ + Math.sin(angle + Math.PI / 2) * (noFlyR + 60);
+    waypoints.push([avoidX, altitude + 20, avoidZ]);
+  } else if (distStorm < stormR + 40) {
+    const angle = Math.atan2(fz - stormZ, fx - stormX);
+    const avoidX = stormX + Math.cos(angle + Math.PI / 2) * (stormR + 50);
+    const avoidZ = stormZ + Math.sin(angle + Math.PI / 2) * (stormR + 50);
     waypoints.push([avoidX, altitude + 15, avoidZ]);
   } else {
-    // Add a midpoint with slight altitude variation for realism
-    waypoints.push([(fx + tx) / 2, altitude + 10, (fz + tz) / 2]);
+    // Midpoint with altitude bump (stay well above buildings)
+    waypoints.push([(fx + tx) / 2, altitude + 20, (fz + tz) / 2]);
   }
 
   waypoints.push([tx, altitude, tz]);
@@ -179,40 +185,50 @@ export function tickMission(mission, dt) {
 export function getMissionPosition(mission) {
   if (mission.phase < 0 || mission.done) return null;
 
+  // Drone's unique pad world position
+  const padX = HUB_POS[0] + mission.padOffset[0];
+  const padZ = HUB_POS[1] + mission.padOffset[1];
+
   switch (mission.phase) {
-    case 0: // ordered — at warehouse
-    case 1: // assigned — at warehouse
-      return [HUB_POS[0], 8, HUB_POS[1]];
-    case 2: { // launching — rise from pad
+    case 0: // ordered — at its own pad
+    case 1: // assigned — at its own pad
+      return [padX, 10, padZ];
+    case 2: { // launching — rise from OWN pad
       const t = Math.min(1, mission.phaseTimer / PHASE_DURATIONS[2]);
-      const y = 8 + t * (mission.altitudeLane - 8);
-      return [HUB_POS[0], y, HUB_POS[1]];
+      const y = 10 + t * (mission.altitudeLane - 10);
+      // Also move laterally from pad toward hub exit during ascent
+      const lx = padX + (HUB_POS[0] - padX) * Math.min(1, t * 1.5);
+      const lz = padZ + (HUB_POS[1] - padZ) * Math.min(1, t * 1.5);
+      return [lx, y, lz];
     }
     case 3: // toPickup — interpolate along waypoints
     case 5: // toDelivery
     case 7: // returning
       return interpolateWaypoints(mission.legWaypoints, mission.progress);
-    case 4: { // collecting — hover/descend at pickup
+    case 4: { // collecting — descend at pickup (min 25m to avoid ground objects)
       const t = mission.phaseTimer / PHASE_DURATIONS[4];
       const [px, pz] = mission.pickup.pos;
-      const descendY = t < 0.3 ? mission.altitudeLane * (1 - t / 0.3) + 12 * (t / 0.3) :
-                        t < 0.7 ? 12 : 12 + (t - 0.7) / 0.3 * (mission.altitudeLane - 12);
+      const descendY = t < 0.3 ? mission.altitudeLane * (1 - t / 0.3) + 25 * (t / 0.3) :
+                        t < 0.7 ? 25 : 25 + (t - 0.7) / 0.3 * (mission.altitudeLane - 25);
       return [px, descendY, pz];
     }
-    case 6: { // delivering — descend/winch at delivery
+    case 6: { // delivering — descend/winch at delivery (min 25m landing)
       const t = mission.phaseTimer / PHASE_DURATIONS[6];
       const [dx, dz] = mission.delivery.pos;
       if (mission.deliveryStyle === "winch") {
-        return [dx, mission.altitudeLane, dz]; // hover above
+        return [dx, mission.altitudeLane, dz];
       }
-      const landY = t < 0.4 ? mission.altitudeLane * (1 - t / 0.4) + 8 * (t / 0.4) :
-                     t < 0.7 ? 8 : 8 + (t - 0.7) / 0.3 * (mission.altitudeLane - 8);
+      const landY = t < 0.4 ? mission.altitudeLane * (1 - t / 0.4) + 20 * (t / 0.4) :
+                     t < 0.7 ? 20 : 20 + (t - 0.7) / 0.3 * (mission.altitudeLane - 20);
       return [dx, landY, dz];
     }
-    case 8: { // docking — descend to pad
+    case 8: { // docking — descend to OWN pad
       const t = Math.min(1, mission.phaseTimer / PHASE_DURATIONS[8]);
-      const y = mission.altitudeLane * (1 - t) + 8 * t;
-      return [HUB_POS[0], y, HUB_POS[1]];
+      const y = mission.altitudeLane * (1 - t) + 10 * t;
+      // Move laterally back to own pad during descent
+      const lx = HUB_POS[0] + (padX - HUB_POS[0]) * Math.min(1, t * 1.5);
+      const lz = HUB_POS[1] + (padZ - HUB_POS[1]) * Math.min(1, t * 1.5);
+      return [lx, y, lz];
     }
   }
   return null;

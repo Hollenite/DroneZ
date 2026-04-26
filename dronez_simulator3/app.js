@@ -67,18 +67,21 @@ for(let i=0;i<ACTIVE_MISSION_COUNT;i++){
   line.visible=false;worldGroup.add(line);routeLines.push(line);
 }
 
-// Build fleet
+// Build fleet — each drone gets its own unique pad position
 for(let i=0;i<DRONE_COUNT;i++){
   const type=droneTypes[i%droneTypes.length];
   const isLow=i>=ACTIVE_MISSION_COUNT;
   const drone=createDrone(type.color,isLow);
-  const pad=pads[i%pads.length];
-  const wp=new THREE.Vector3();pad.getWorldPosition(wp);
-  drone.group.position.copy(wp).add(new THREE.Vector3(0,7+(i%4)*0.3,0));
+  // Unique pad position: 7 columns × 7 rows grid inside warehouse
+  const padCol=i%7,padRow=Math.floor(i/7)%7;
+  const padX=-210+(-80+padCol*24);
+  const padZ=170+(-52+padRow*17);
+  drone.group.position.set(padX,10,padZ);
   drone.group.userData={id:`DZ-${String(i+1).padStart(2,"0")}`,type,battery:98-(i%8)*2,
-    altitude:0,speed:0,eta:0,risk:"Nominal",
+    altitude:10,speed:0,eta:0,risk:"Nominal",
     status:i<ACTIVE_MISSION_COUNT?"Active mission":"Docked / charging",
-    hasPayload:false,missionPhase:"idle"};
+    hasPayload:false,missionPhase:"idle",
+    homeX:padX,homeZ:padZ};
   worldGroup.add(drone.group);drones.push(drone);
   const opt=document.createElement("option");
   opt.value=String(i);opt.textContent=`${drone.group.userData.id} — ${type.name}`;
@@ -336,12 +339,15 @@ function drawMinimap(){
     mapCtx.lineWidth=i===state.selectedIdx?2.5:1;
     mapCtx.beginPath();pts.forEach((p,j)=>j?mapCtx.lineTo(p.x,p.y):mapCtx.moveTo(p.x,p.y));mapCtx.stroke();
   });
-  for(let i=0;i<Math.min(drones.length,state.launched?24:ACTIVE_MISSION_COUNT+3);i++){
+  for(let i=0;i<drones.length;i++){
     const p=proj(drones[i].group.position.x,drones[i].group.position.z);
     const isSel=i===state.selectedIdx;
+    const isActive=i<ACTIVE_MISSION_COUNT;
     mapCtx.fillStyle=isSel?"#ffffff":`#${drones[i].group.userData.type.color.toString(16).padStart(6,"0")}`;
-    mapCtx.beginPath();mapCtx.arc(p.x,p.y,isSel?4:1.8,0,Math.PI*2);mapCtx.fill();
+    mapCtx.globalAlpha=isActive||isSel?1:0.5;
+    mapCtx.beginPath();mapCtx.arc(p.x,p.y,isSel?4:isActive?2.5:1.2,0,Math.PI*2);mapCtx.fill();
   }
+  mapCtx.globalAlpha=1;
   mapCtx.fillStyle=state.day?"#1a2830":"#dff8ff";mapCtx.font="900 9px Inter,sans-serif";mapCtx.fillText("TACTICAL MAP",8,14);
 }
 function proj(x,z){return{x:((x+WORLD/2)/WORLD)*minimap.width,y:((z+WORLD/2)/WORLD)*minimap.height};}
@@ -374,8 +380,8 @@ resetBtn.addEventListener("click",()=>{
   }
   drones.forEach((dr,i)=>{
     const d=dr.group.userData;d.battery=98-(i%8)*2;
-    const pad=pads[i%pads.length];const wp=new THREE.Vector3();pad.getWorldPosition(wp);
-    dr.group.position.copy(wp).add(new THREE.Vector3(0,7,0));
+    // Return each drone to its unique home pad
+    dr.group.position.set(d.homeX,10,d.homeZ);
     d.hasPayload=false;d.missionPhase="idle";
     dr.group.children.forEach(c=>{if(c.userData.isPayload)c.visible=false;if(c.userData.isWinch)c.visible=false;});
   });
