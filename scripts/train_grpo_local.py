@@ -21,7 +21,7 @@ for candidate in (SCRIPT_DIR, SRC):
     if str(candidate) not in sys.path:
         sys.path.insert(0, str(candidate))
 
-from train_grpo import dependency_status, write_json
+from train_grpo import dependency_status, display_path, write_json
 from urbanair.env.environment import DroneZEnvironment
 from urbanair.eval.benchmark import benchmark_task_sweep
 from urbanair.policies.base import Policy
@@ -213,7 +213,7 @@ class LocalGRPOTrainer:
             "pre_training_mean_reward": _aggregate_mean_reward(eval_before),
             "post_training_mean_reward": _aggregate_mean_reward(eval_after),
             "mean_reward_delta": round(_aggregate_mean_reward(eval_after) - _aggregate_mean_reward(eval_before), 4),
-            "output_dir": str(self.output_dir),
+            "output_dir": display_path(self.output_dir),
         }
 
         eval_before_payload = {
@@ -265,7 +265,7 @@ class LocalGRPOTrainer:
                 "enabled": self.use_safe_sampling,
                 "dtype": self.sampling_dtype_name,
             },
-            "output_dir": str(self.output_dir),
+            "output_dir": display_path(self.output_dir),
         }
         destination = write_json(self.output_dir / "sanity_check.json", payload)
         return destination

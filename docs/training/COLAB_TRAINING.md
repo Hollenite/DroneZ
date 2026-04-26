@@ -1,200 +1,130 @@
 # DroneZ Colab Training Guide
 
-Colab notebook link:
+Public Colab link:
 
-- `https://colab.research.google.com/drive/1ge0s9eYcbeE25oEXh6t-wySGh3ZCR9AV`
+```text
+https://colab.research.google.com/drive/1ge0s9eYcbeE25oEXh6t-wySGh3ZCR9AV
+```
 
 Repo notebook path:
 
-- `notebooks/train_dronez_grpo_colab.ipynb`
+```text
+notebooks/train_dronez_grpo_colab.ipynb
+```
 
-This repo does **not** claim that a GRPO run already happened. The local repo provides a real environment-connected smoke harness, dry-run training prep, a dedicated local GPU training script, and a Colab-ready template path for actual TRL/Unsloth work.
+## What This Notebook Does
 
-If you have a laptop or workstation GPU, prefer `scripts/train_grpo_local.py` for the first real run. Use the Colab path when you need remote GPU compute.
+The notebook is designed to be judge-runnable and beginner-friendly. It does not fake training success.
 
-## 1. Recommended Small Model
+It runs:
 
-- `Qwen/Qwen2.5-0.5B-Instruct`
+1. Runtime and GPU checks.
+2. Repo clone / update.
+3. Safe dependency installation.
+4. Environment smoke test.
+5. Dry-run training setup.
+6. Action-format diagnostics.
+7. SFT warm-start data generation.
+8. Optional candidate-choice GRPO training if GPU is available.
+9. Plot and metrics summary.
+10. `artifacts/training/TRAINING_SUMMARY.md`.
+11. `dronez_training_artifacts.zip`.
 
-Larger options if GPU memory allows:
+## How To Run In Colab
 
-- `Qwen/Qwen2.5-1.5B-Instruct`
-- `google/gemma-2-2b-it`
+1. Open the Colab link.
+2. Go to `Runtime -> Change runtime type`.
+3. Select a GPU runtime.
+4. Run cells from top to bottom.
+5. If a cell fails, copy the full error back into the repo issue/chat so it can be fixed.
 
-## 2. Local Sanity Before Any GPU Run
+## Security
+
+Do not paste Hugging Face tokens into the notebook, README, logs, screenshots, or chat.
+
+If a model download needs authentication, use one of these:
+
+- Colab Secrets
+- `os.environ["HF_TOKEN"]`
+- manual `huggingface-cli login`
+
+Never print the token.
+
+## Safe Commands Used By The Notebook
+
+Dry-run training setup:
 
 ```bash
-python scripts/train_grpo.py --mode smoke
-python scripts/train_grpo.py --mode dry-run
-python scripts/train_grpo_local.py --sanity-check --model Qwen/Qwen2.5-0.5B-Instruct --output-dir artifacts/training/local_sanity
 python scripts/train_grpo_colab.py --dry-run --model Qwen/Qwen2.5-0.5B-Instruct --tasks easy,medium,demo --output-dir artifacts/training
 ```
 
-## Action-Format Warm Start
+Sanity check:
 
-The first real local GRPO-style attempt exposed an action-format bottleneck: the model did not reliably emit valid DroneZ JSON actions, so reward stayed flat. Before another long RL run, generate SFT examples and run the format check:
+```bash
+python scripts/train_grpo_local.py --sanity-check --model Qwen/Qwen2.5-0.5B-Instruct --output-dir artifacts/training/local_sanity
+```
+
+Action-format diagnostics:
+
+```bash
+python scripts/train_grpo_local.py --format-check --model Qwen/Qwen2.5-0.5B-Instruct --tasks easy,demo --output-dir artifacts/training/format_check
+```
+
+SFT warm-start data:
 
 ```bash
 python scripts/generate_sft_action_data.py --tasks easy,medium,demo,hard --output artifacts/training/sft_action_data.jsonl
-python scripts/train_action_format_sft.py --dry-run --data artifacts/training/sft_action_data.jsonl --output-dir artifacts/training/action_format_sft
-python scripts/train_grpo_local.py --format-check --candidate-choice --tasks easy,demo --output-dir artifacts/training/format_check
 ```
 
-For the next real GPU attempt, prefer candidate-choice mode:
+## Optional Real Training
+
+Only run this on a GPU runtime:
 
 ```bash
-python scripts/train_grpo_local.py --real-train --candidate-choice --model Qwen/Qwen2.5-0.5B-Instruct --tasks easy,medium,demo --eval-tasks easy,medium,demo,hard --output-dir artifacts/training
+python scripts/train_grpo_local.py --real-train --candidate-choice --model Qwen/Qwen2.5-0.5B-Instruct --tasks easy,medium,demo --eval-tasks easy,medium,demo,hard --episodes 20 --group-size 4 --output-dir artifacts/training/candidate_grpo
 ```
 
-Only claim trained-model improvement if `eval_after` beats `eval_before`.
+Smaller fallback:
 
-These commands should write:
+```bash
+python scripts/train_grpo_local.py --real-train --candidate-choice --model Qwen/Qwen2.5-0.5B-Instruct --tasks easy,demo --eval-tasks easy,demo --episodes 5 --group-size 2 --output-dir artifacts/training/candidate_grpo_small
+```
 
-- `artifacts/results/training_smoke_metrics.json`
+If CUDA/GPU is unavailable, the notebook skips real training gracefully and still produces dry-run, diagnostics, SFT data, plots, and a summary.
+
+## Expected Outputs
+
 - `artifacts/training/training_metrics.json`
 - `artifacts/training/eval_before.json`
 - `artifacts/training/eval_after.json`
 - `artifacts/training/local_sanity/sanity_check.json`
-
-## 3. Local GPU Run
-
-On a machine with a CUDA GPU:
-
-```bash
-pip install -e .[train]
-python scripts/train_grpo_local.py --model Qwen/Qwen2.5-0.5B-Instruct --tasks easy,medium,demo --eval-tasks easy,medium,demo,hard --output-dir artifacts/training
-```
-
-This path is the repo's dedicated real-training entrypoint. It is the only tracked script intended to set `training_executed: true` after a real run completes.
-
-## 4. Colab Setup
-
-In Colab:
-
-```bash
-git clone https://github.com/Hollenite/DroneZ.git
-cd DroneZ
-pip install -e .[train]
-python scripts/train_grpo_colab.py --dry-run --model Qwen/Qwen2.5-0.5B-Instruct --tasks easy,medium,demo --output-dir artifacts/training
-```
-
-To check the dependency/template path:
-
-```bash
-python scripts/train_grpo_colab.py --model Qwen/Qwen2.5-0.5B-Instruct --tasks easy,medium,demo --output-dir artifacts/training
-```
-
-## 5. What The Training Path Uses
-
-- Prompt source: DroneZ observation summary plus supported action list
-- Action format: strict JSON with keys `action` and `params`
-- Reward source: the real reward returned by `DroneZEnvironment.step(...)`
-- Curriculum: `easy -> medium -> demo -> hard`
-- Default model: `Qwen/Qwen2.5-0.5B-Instruct`
-
-## 6. Honest Expected Outputs
-
-When you run only `--dry-run`, you should **not** claim training happened.
-
-When you run `--sanity-check`, you should **not** claim training happened.
-
-When a real local-GPU GRPO job is run, save:
-
-- `artifacts/training/training_metrics.json`
-- `artifacts/training/eval_before.json`
-- `artifacts/training/eval_after.json`
+- `artifacts/training/format_check/format_check.json`
+- `artifacts/training/sft_action_data.jsonl`
+- `artifacts/training/TRAINING_SUMMARY.md`
 - `artifacts/plots/training_reward_curve.png`
-- `artifacts/plots/training_loss_curve.png` if available
+- `artifacts/plots/training_loss_curve.png`
+- `artifacts/plots/valid_action_rate.png`
+- `artifacts/plots/eval_before_after.png`
+- `dronez_training_artifacts.zip`
 
-Today, the Colab wrapper supports dry-run prep and dependency/template validation. It does not yet write those real-training artifacts by itself.
+## How To Interpret Results
 
-## 7. Creating A Public Colab Link
+You may claim:
 
-1. Open `notebooks/train_dronez_grpo_colab.ipynb` in Google Colab.
-2. Save a copy to Drive.
-3. Set sharing to anyone with the link can view.
-4. Paste the public link into the README section `Submission Links To Fill Before Deadline`.
+- DroneZ environment works.
+- Dry-run training setup works.
+- Action-format diagnostics work.
+- SFT warm-start data exists.
+- Candidate-choice training path is implemented.
 
-## 8. Recommended Judge Story
+Do not claim:
 
-- Current measured improvement in this repo: deterministic `improved` policy vs baselines
-- Local GPU path: implemented and sanity-checkable
-- Colab path: template/dry-run validated
-- Real trained-model claims should be added only after a real run finishes and artifacts are saved
+- A GRPO-trained model improved reward, unless `eval_after` is better than `eval_before`.
+- Real drone flight control is solved.
+- Visual telemetry is real aircraft telemetry.
 
-## 9. Dependency Notes
+Current honest status:
 
-- `pip install -e .[train]` now includes `peft` alongside `accelerate`, `datasets`, `transformers`, and `trl`.
-- Keep `HF_TOKEN` in the shell environment if your model download requires it.
-- Do not paste secrets directly into notebooks or committed scripts.
-
-## 10. Commit Hygiene
-
-- Do not commit large local checkpoints or generated model weights unless you intentionally want them in the repository.
-- Commit the script/docs/tests changes first, then run training on your own machine and review the generated artifacts separately.
-
-## 11. One-Cell Colab Preference
-
-For linear notebook flows, prefer a single runnable cell for setup/validation commands where practical.
-
-## 12. Handoff Summary
-
-- local smoke and dry-run paths remain honest scaffolding
-- `scripts/train_grpo_local.py` is the repo’s real local training entrypoint
-- `scripts/train_grpo_colab.py` remains the safer dependency/template path until a full shared trainer is warranted
-- real evidence still requires an actual GPU run
-
-## 13. Keep Claims Narrow
-
-Until a real run is completed, the correct statement is:
-
-- the repo now contains a local GPU training script
-- the repo does not yet contain committed evidence from a completed trained-model run
-
-That is the claim boundary to preserve.
-
-## 14. Source Of Truth For Training Outputs
-
-The canonical judge-facing files remain:
-
-- `artifacts/training/training_metrics.json`
-- `artifacts/training/eval_before.json`
-- `artifacts/training/eval_after.json`
-
-Update any README or pitch claims only after those files come from a real run.
-
-## 15. Practical Order Of Operations
-
-1. Run smoke.
-2. Run dry-run.
-3. Run local sanity check.
-4. Run local GPU training.
-5. Review before/after metrics.
-6. Update submission claims only if the real artifacts support them.
-
-This keeps the training story honest and reproducible.
-
-## 16. Existing Colab Notebook
-
-The existing notebook remains useful for setup and template validation, but the new local script is the fastest path if you already have a GPU machine.
-
-## 17. Final Reminder
-
-No fake training claims. Only real artifacts count.
-
-## 18. Original Colab Notes
-
-Colab notebook link:
-
-- `https://colab.research.google.com/drive/1ge0s9eYcbeE25oEXh6t-wySGh3ZCR9AV`
-
-Repo notebook path:
-
-- `notebooks/train_dronez_grpo_colab.ipynb`
-
-## 19. Appendix
-
-The rest of this guide remains compatible with the updated flow.
-
-## 20. Existing guidance below
-
+```text
+Real trained-model reward improvement is not proven yet.
+```

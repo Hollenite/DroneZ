@@ -13,8 +13,15 @@ from train_grpo import main as shared_main
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Colab-friendly entrypoint for DroneZ GRPO setup.")
-    parser.add_argument("--output-dir", default=str(Path(__file__).resolve().parents[1] / "artifacts" / "training"))
+    parser = argparse.ArgumentParser(
+        description=(
+            "Colab-friendly entrypoint for DroneZ training setup. This wrapper is intentionally "
+            "safe: --dry-run prepares artifacts without GPU/TRL, while the default path only "
+            "checks the TRL template dependencies. Use scripts/train_grpo_local.py --real-train "
+            "for actual candidate-choice training."
+        )
+    )
+    parser.add_argument("--output-dir", default="artifacts/training")
     parser.add_argument("--model", default="Qwen/Qwen2.5-0.5B-Instruct")
     parser.add_argument("--tasks", default="easy,medium,demo")
     parser.add_argument("--dry-run", action="store_true", help="Prepare the real prompt/action interface without requiring TRL.")

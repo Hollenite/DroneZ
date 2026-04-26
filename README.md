@@ -221,6 +221,14 @@ Training plots:
 
 Honest claim: DroneZ includes a runnable training pipeline and real diagnostics, but no trained GRPO reward improvement is claimed yet.
 
+Colab path:
+
+- Public notebook: https://colab.research.google.com/drive/1ge0s9eYcbeE25oEXh6t-wySGh3ZCR9AV
+- Repo notebook: [notebooks/train_dronez_grpo_colab.ipynb](notebooks/train_dronez_grpo_colab.ipynb)
+- Guide: [docs/training/COLAB_TRAINING.md](docs/training/COLAB_TRAINING.md)
+
+The notebook runs dry-run setup, action-format diagnostics, SFT data generation, plot display, artifact zipping, and optional candidate-choice GRPO if a GPU is available.
+
 ## 🖥️ Demos
 
 ### Hugging Face Control Tower Demo

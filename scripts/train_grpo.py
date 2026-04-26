@@ -66,6 +66,13 @@ def write_json(path: Path, payload: dict[str, object]) -> Path:
     return path
 
 
+def display_path(path: Path) -> str:
+    try:
+        return str(path.relative_to(Path.cwd()))
+    except ValueError:
+        return str(path)
+
+
 def run_smoke_curriculum() -> dict[str, object]:
     curriculum = [
         ("easy", RandomPolicy()),
@@ -93,7 +100,7 @@ def run_smoke_curriculum() -> dict[str, object]:
 
 
 def run_dry_run(output_dir: Path, model: str, tasks: list[str]) -> dict[str, object]:
-    TRAINING_DIR.mkdir(parents=True, exist_ok=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
     PLOTS_DIR.mkdir(parents=True, exist_ok=True)
 
     env = DroneZEnvironment(default_task_id="easy")
@@ -120,7 +127,7 @@ def run_dry_run(output_dir: Path, model: str, tasks: list[str]) -> dict[str, obj
         "prompt_example": prompt,
         "sample_action_json": sample_action,
         "action_parser_example": parse_action_text(json.dumps(sample_action)),
-        "output_dir": str(output_dir),
+        "output_dir": display_path(output_dir),
     }
     eval_before = {
         "status": "reference_only",
@@ -133,9 +140,9 @@ def run_dry_run(output_dir: Path, model: str, tasks: list[str]) -> dict[str, obj
     }
 
     destinations = [
-        write_json(TRAINING_DIR / "training_metrics.json", training_metrics),
-        write_json(TRAINING_DIR / "eval_before.json", eval_before),
-        write_json(TRAINING_DIR / "eval_after.json", eval_after),
+        write_json(output_dir / "training_metrics.json", training_metrics),
+        write_json(output_dir / "eval_before.json", eval_before),
+        write_json(output_dir / "eval_after.json", eval_after),
     ]
     return {
         "payload": {
@@ -186,7 +193,7 @@ def run_trl_template(output_dir: Path, model: str, tasks: list[str]) -> dict[str
         "prompt_example": build_prompt(observation),
         "sample_action_json": {"action": "assign_delivery", "params": {"drone_id": "FA-1", "order_id": "O1"}},
         "environment_reward_source": "Use the real reward returned by DroneZEnvironment.step(...) rollouts.",
-        "output_dir": str(output_dir),
+        "output_dir": display_path(output_dir),
     }
     destination = output_dir / "grpo_template.json"
     output_dir.mkdir(parents=True, exist_ok=True)
