@@ -130,7 +130,13 @@ Manual Netlify fallback:
 
 ## After Deployment
 
-Once you have a real public URL:
+Current public simulator URL:
+
+```text
+https://creative-klepon-8a1f8a.netlify.app/
+```
+
+If you replace or rename the public deployment later:
 
 1. Test it in a browser.
 2. Confirm it opens in bright/day mode by default.

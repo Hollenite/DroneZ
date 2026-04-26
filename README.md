@@ -51,7 +51,7 @@ DroneZ turns drone delivery operations into a reward-driven OpenEnv environment 
 | Hugging Face Space Repository | https://huggingface.co/spaces/Krishna2521/dronez-openenv |
 | Post-submission Staging Space | https://huggingface.co/spaces/Krishna2521/Meta_Drone_env |
 | Staging Agent Playground | https://krishna2521-meta-drone-env.hf.space/agent |
-| 3D Simulator Public URL | To be added after Netlify/Vercel deployment |
+| 3D Simulator Public URL | https://creative-klepon-8a1f8a.netlify.app/ |
 | 3D Simulator Static Folder | [simulator_public/](simulator_public/) |
 | 3D Simulator Deploy Guide | [README_DEPLOY.md](README_DEPLOY.md) |
 | Showcase Folder | https://drive.google.com/drive/folders/1EvQvEcNg9AasMICUYt_AkMDGtoTlMbJE?usp=sharing |
