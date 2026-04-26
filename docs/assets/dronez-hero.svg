@@ -1,0 +1,99 @@
+<svg width="1200" height="420" viewBox="0 0 1200 420" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">DroneZ hybrid drone fleet control tower</title>
+  <desc id="desc">A cinematic city-control visualization with a drone, route corridors, telemetry cards, and a hybrid AI control tower.</desc>
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1200" y2="420" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#EAF7FF"/>
+      <stop offset="0.48" stop-color="#DFF5EC"/>
+      <stop offset="1" stop-color="#F9E9C7"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.96"/>
+      <stop offset="1" stop-color="#EAF2F6" stop-opacity="0.92"/>
+    </linearGradient>
+    <linearGradient id="route" x1="214" y1="298" x2="1015" y2="130" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2F80ED"/>
+      <stop offset="0.5" stop-color="#8B5CF6"/>
+      <stop offset="1" stop-color="#00A878"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#0C2E3E" flood-opacity="0.18"/>
+    </filter>
+    <filter id="softGlow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <rect width="1200" height="420" rx="34" fill="url(#sky)"/>
+  <circle cx="1057" cy="76" r="72" fill="#FFD166" opacity="0.55"/>
+  <circle cx="1061" cy="78" r="40" fill="#FFE8A3" opacity="0.75"/>
+  <path d="M70 340 C180 280 277 306 386 255 C523 190 617 238 741 174 C865 110 980 161 1130 85" stroke="url(#route)" stroke-width="9" stroke-linecap="round" stroke-dasharray="22 16" opacity="0.8" filter="url(#softGlow)"/>
+  <path d="M70 366 H1130" stroke="#233647" stroke-width="2" opacity="0.12"/>
+  <g opacity="0.95">
+    <rect x="92" y="222" width="54" height="126" rx="8" fill="#9AB6C9"/>
+    <rect x="160" y="190" width="74" height="158" rx="10" fill="#789CB2"/>
+    <rect x="253" y="244" width="58" height="104" rx="8" fill="#B5C7D5"/>
+    <rect x="334" y="168" width="82" height="180" rx="10" fill="#86A8B9"/>
+    <rect x="443" y="214" width="56" height="134" rx="8" fill="#A9C2CF"/>
+    <rect x="520" y="142" width="92" height="206" rx="12" fill="#6F91A6"/>
+    <rect x="636" y="236" width="70" height="112" rx="8" fill="#AFC7D3"/>
+    <rect x="735" y="174" width="86" height="174" rx="10" fill="#7FA0B3"/>
+    <rect x="850" y="228" width="66" height="120" rx="8" fill="#A6BBC9"/>
+    <rect x="941" y="118" width="96" height="230" rx="14" fill="#607F96"/>
+    <rect x="1064" y="207" width="62" height="141" rx="8" fill="#8AA9B9"/>
+  </g>
+  <g opacity="0.25">
+    <path d="M110 244h18M110 267h18M110 290h18M178 214h20M178 238h20M178 262h20M356 194h22M356 222h22M356 250h22M544 174h30M544 206h30M544 238h30M758 205h24M758 234h24M968 154h32M968 190h32M968 226h32" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round"/>
+  </g>
+  <g filter="url(#shadow)">
+    <rect x="34" y="34" width="292" height="132" rx="24" fill="url(#panel)" stroke="#FFFFFF" stroke-width="1"/>
+    <text x="58" y="76" fill="#102737" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="800">DroneZ</text>
+    <text x="58" y="103" fill="#466272" font-family="Inter, Arial, sans-serif" font-size="15">OpenEnv fleet-control environment</text>
+    <rect x="58" y="124" width="86" height="22" rx="11" fill="#E7F8EF"/>
+    <text x="75" y="140" fill="#087B4F" font-family="Inter, Arial, sans-serif" font-size="12" font-weight="700">SAFE RL</text>
+    <rect x="154" y="124" width="126" height="22" rx="11" fill="#EBF2FF"/>
+    <text x="173" y="140" fill="#2F5FB3" font-family="Inter, Arial, sans-serif" font-size="12" font-weight="700">CONTROL TOWER</text>
+  </g>
+  <g filter="url(#shadow)">
+    <rect x="874" y="44" width="274" height="150" rx="24" fill="url(#panel)" stroke="#FFFFFF" stroke-width="1"/>
+    <text x="900" y="82" fill="#102737" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="800">Live Mission Telemetry</text>
+    <text x="900" y="116" fill="#496372" font-family="Inter, Arial, sans-serif" font-size="13">Battery</text>
+    <rect x="974" y="104" width="124" height="14" rx="7" fill="#D6E3EA"/>
+    <rect x="974" y="104" width="96" height="14" rx="7" fill="#00A878"/>
+    <text x="900" y="145" fill="#496372" font-family="Inter, Arial, sans-serif" font-size="13">Route risk</text>
+    <rect x="974" y="133" width="124" height="14" rx="7" fill="#D6E3EA"/>
+    <rect x="974" y="133" width="42" height="14" rx="7" fill="#F59E0B"/>
+    <text x="900" y="174" fill="#496372" font-family="Inter, Arial, sans-serif" font-size="13">GPS / IMU / LiDAR</text>
+    <circle cx="1054" cy="169" r="6" fill="#00A878"/>
+    <circle cx="1075" cy="169" r="6" fill="#00A878"/>
+    <circle cx="1096" cy="169" r="6" fill="#2F80ED"/>
+  </g>
+  <g transform="translate(570 78)" filter="url(#shadow)">
+    <ellipse cx="77" cy="98" rx="82" ry="18" fill="#0F2737" opacity="0.14"/>
+    <rect x="30" y="62" width="94" height="28" rx="14" fill="#182D3D"/>
+    <ellipse cx="77" cy="62" rx="52" ry="20" fill="#24495A"/>
+    <ellipse cx="77" cy="56" rx="34" ry="12" fill="#4BD0E0"/>
+    <rect x="-18" y="64" width="54" height="8" rx="4" fill="#182D3D"/>
+    <rect x="118" y="64" width="54" height="8" rx="4" fill="#182D3D"/>
+    <rect x="4" y="38" width="10" height="32" rx="5" fill="#182D3D"/>
+    <rect x="140" y="38" width="10" height="32" rx="5" fill="#182D3D"/>
+    <ellipse cx="9" cy="36" rx="45" ry="8" fill="#1F3B4A"/>
+    <ellipse cx="145" cy="36" rx="45" ry="8" fill="#1F3B4A"/>
+    <path d="M40 91l-8 40M113 91l10 40" stroke="#182D3D" stroke-width="6" stroke-linecap="round"/>
+    <rect x="59" y="88" width="36" height="24" rx="6" fill="#0E1B25"/>
+    <circle cx="77" cy="100" r="8" fill="#5BE0EE"/>
+  </g>
+  <g filter="url(#shadow)">
+    <rect x="68" y="276" width="210" height="82" rx="20" fill="#FFFFFF" opacity="0.92"/>
+    <text x="92" y="310" fill="#102737" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="800">Safety violations</text>
+    <text x="92" y="340" fill="#00A878" font-family="Inter, Arial, sans-serif" font-size="26" font-weight="900">8 → 0</text>
+  </g>
+  <g filter="url(#shadow)">
+    <rect x="925" y="275" width="205" height="82" rx="20" fill="#FFFFFF" opacity="0.92"/>
+    <text x="949" y="310" fill="#102737" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="800">Demo reward</text>
+    <text x="949" y="340" fill="#2F80ED" font-family="Inter, Arial, sans-serif" font-size="26" font-weight="900">32 → 89</text>
+  </g>
+</svg>

@@ -8,113 +8,158 @@ pinned: false
 license: mit
 ---
 
-# DroneZ Fleet Delivery Environment
+<p align="center">
+  <img src="docs/assets/dronez-hero.svg" alt="DroneZ hybrid drone control tower" width="100%">
+</p>
 
-DroneZ is an OpenEnv RL environment for training and evaluating mission-level drone fleet controllers under weather, no-fly zones, battery limits, urgent orders, and delivery uncertainty.
+<h1 align="center">DroneZ Fleet Delivery Environment</h1>
 
-## Submission Links
+<p align="center">
+  <b>OpenEnv RL environment for mission-level autonomous drone fleet control.</b>
+  <br/>
+  Train and evaluate fleet decisions under weather, no-fly zones, battery limits, urgent orders, charging constraints, and delivery uncertainty.
+</p>
 
-- Hugging Face Space Repository: https://huggingface.co/spaces/Krishna2521/dronez-openenv
-- Live Runtime: https://krishna2521-dronez-openenv.hf.space
-- Live Demo: https://krishna2521-dronez-openenv.hf.space/demo/index.html
-- API Docs: https://krishna2521-dronez-openenv.hf.space/docs
-- Health Check: https://krishna2521-dronez-openenv.hf.space/health
-- GitHub Team Repo: https://github.com/Hollenite/DroneZ.git
-- Colab Notebook Path: `notebooks/train_dronez_grpo_colab.ipynb`
-- Public Colab Link: https://colab.research.google.com/drive/1ge0s9eYcbeE25oEXh6t-wySGh3ZCR9AV
-- Blog / Writeup: `BLOG.md` in this repo. Public blog URL: `TODO - add before final form submission if published externally`.
-- YouTube Demo: `TODO - add before final form submission`.
-- Slides / Presentation: `TODO - add before final form submission`.
+<p align="center">
+  <a href="https://krishna2521-dronez-openenv.hf.space">Live Runtime</a>
+  ·
+  <a href="https://krishna2521-dronez-openenv.hf.space/demo/index.html">Control Tower Demo</a>
+  ·
+  <a href="https://krishna2521-dronez-openenv.hf.space/docs">API Docs</a>
+  ·
+  <a href="https://huggingface.co/spaces/Krishna2521/dronez-openenv">HF Space</a>
+  ·
+  <a href="docs/README.md">Docs</a>
+</p>
 
-## Introduction
+<p align="center">
+  <img alt="OpenEnv" src="https://img.shields.io/badge/OpenEnv-ready-0ea5e9">
+  <img alt="Hugging Face Space" src="https://img.shields.io/badge/HF%20Space-live-f59e0b">
+  <img alt="Docker" src="https://img.shields.io/badge/Docker-validated-2563eb">
+  <img alt="Tests" src="https://img.shields.io/badge/tests-79%20passed-16a34a">
+  <img alt="Training honesty" src="https://img.shields.io/badge/GRPO%20reward-not%20proven%20yet-64748b">
+</p>
 
-When users order something online, they expect delivery to be fast and reliable. Drones can make delivery faster because they avoid road traffic, but real drone delivery is not automatically optimal. A drone fleet must handle weather, no-fly zones, battery limits, obstacles, urgent orders, changing recipients, charging congestion, and safety rules.
+## ✨ One-Line Pitch
 
-DroneZ focuses on the decision-making layer. It asks: how should a fleet controller assign drones, choose routes, reroute around disruptions, send drones to charge, prioritize urgent orders, and recover from failed delivery attempts?
+DroneZ turns drone delivery operations into a reward-driven OpenEnv environment where an AI control tower learns mission-level decisions: assign drones, route safely, prioritize urgent orders, manage charging, and recover from disruptions.
 
-## What DroneZ Actually Does
+## 🚀 Quick Access
 
-DroneZ is not a low-level motor-control simulator. It does not train an RL model to directly spin propellers.
+| Resource | Link |
+| --- | --- |
+| Hugging Face Space Repository | https://huggingface.co/spaces/Krishna2521/dronez-openenv |
+| Live Runtime | https://krishna2521-dronez-openenv.hf.space |
+| Live Demo | https://krishna2521-dronez-openenv.hf.space/demo/index.html |
+| API Docs | https://krishna2521-dronez-openenv.hf.space/docs |
+| Health Check | https://krishna2521-dronez-openenv.hf.space/health |
+| Team GitHub Repo | https://github.com/Hollenite/DroneZ.git |
+| Public Colab Notebook | https://colab.research.google.com/drive/1ge0s9eYcbeE25oEXh6t-wySGh3ZCR9AV |
+| Local Notebook | [notebooks/train_dronez_grpo_colab.ipynb](notebooks/train_dronez_grpo_colab.ipynb) |
+| Blog / Writeup | [BLOG.md](BLOG.md) |
+| Pitch | [PITCH.md](PITCH.md) |
+| Submission Checklist | [SUBMISSION_CHECKLIST.md](SUBMISSION_CHECKLIST.md) |
+| Full Documentation | [docs/README.md](docs/README.md) |
+| YouTube Demo | TODO: add public URL before final form submission |
+| Slides | TODO: add public URL before final form submission |
+
+## 🧠 What DroneZ Actually Is
+
+DroneZ is not a low-level drone motor-control simulator. It does not train an RL model to directly spin propellers.
 
 DroneZ is a mission-level drone fleet operations environment:
 
-- Classical drone systems handle stability, PID loops, GPS navigation, sensor fusion, Kalman-style state estimation, geofencing, and emergency safety rules.
-- RL/AI handles high-level decisions such as assignment, routing, charging, recovery, urgent-order priority, and fleet-level mission optimization.
-- The browser demo visualizes this as a hybrid drone control tower: low-level drone control, high-level RL/AI control, and organization-level fleet monitoring.
+- 🚁 **Classical drone systems** handle PID stability, GPS navigation, sensor fusion, Kalman-style state estimation, geofencing, and emergency safety rules.
+- 🤖 **RL/AI control** handles assignment, rerouting, charging, urgent-order priority, delivery recovery, and mission optimization.
+- 🗼 **Control tower logic** monitors the fleet, dispatches missions, handles exceptions, and applies organization-level safety policy.
 
-This boundary is important. It makes the project realistic: real delivery drones are hybrid systems, not pure RL robots.
+That hybrid boundary is the core idea. Real drones are not pure RL machines; they are stable robotics systems with AI at the decision layer.
 
-## OpenEnv Loop
+```mermaid
+flowchart LR
+    A["Real / simulated fleet state"] --> B["Observation"]
+    B --> C["AI mission controller"]
+    C --> D["Structured action"]
+    D --> E["DroneZ step"]
+    E --> F["Reward + next state"]
+    F --> C
 
-DroneZ follows the standard OpenEnv interaction loop:
+    subgraph "Low-level drone stack"
+      L1["PID stability"]
+      L2["Sensor fusion"]
+      L3["GPS navigation"]
+      L4["Safety rules"]
+    end
 
-1. `reset` starts a fresh scenario.
-2. The agent receives an observation describing drones, orders, sectors, chargers, weather, warnings, and recent events.
-3. The agent sends one structured action.
-4. `step` applies that action, advances the simulated world, and returns reward plus the next observation.
-5. Repeating this loop lets policies be evaluated and improved.
+    subgraph "Mission-level AI"
+      H1["Assign drones"]
+      H2["Reroute safely"]
+      H3["Manage charging"]
+      H4["Prioritize urgent orders"]
+    end
+```
 
-In simple words: the agent sees the fleet, chooses a mission decision, receives a score, and tries to make better decisions over time.
+## 🏙️ Environment Design
 
-## Environment Design
+Each episode simulates a drone delivery operation with:
 
-Each episode contains:
+- drones with battery, route, payload capacity, health, and assignment state
+- orders with priority, deadline, destination, recipient availability, and fallback options
+- sectors with weather, congestion, no-fly restrictions, and safety risk
+- charging stations with limited capacity
+- disruptions such as storms, failed drops, urgent-order changes, and restricted zones
 
-- Drones with battery, location, route, payload capacity, health state, and assignment state.
-- Orders with priority, deadline, destination, availability, fallback options, and retry state.
-- City sectors with weather, congestion, no-fly restrictions, and safety risk.
-- Charging stations with limited capacity and reservations.
-- Disruptions such as storms, restricted sectors, failed drops, and urgent-order changes.
+The agent sees the world, chooses a structured action, receives a reward, and continues until all orders are resolved or the episode ends.
 
-The environment is designed to reward safe, useful long-horizon decisions rather than one-step shortcuts.
+## 🎮 Action Space
 
-## Action Space
+| Action | Meaning |
+| --- | --- |
+| `assign_delivery` | Assign an order to a drone. |
+| `attempt_delivery` | Attempt delivery when the drone reaches the destination. |
+| `reroute` | Change route around weather, risk, or no-fly zones. |
+| `prioritize_order` | Move an urgent order higher in the queue. |
+| `fallback_to_locker` | Use a safe locker if the recipient is unavailable. |
+| `return_to_charge` | Send a drone to a charging station. |
+| `reserve_charger` | Reserve charging capacity. |
+| `hold_fleet` | Pause operations in unsafe conditions. |
+| `resume_operations` | Restart operations after a hold. |
 
-The main actions are:
+## 🏆 Reward Design
 
-- `assign_delivery`: assign an order to a drone.
-- `attempt_delivery`: attempt a drop when a drone reaches its destination.
-- `reroute`: change a drone route to avoid risk or recover from disruption.
-- `prioritize_order`: move an urgent or important order higher in the queue.
-- `fallback_to_locker`: send a package to a safe locker when the recipient is unavailable.
-- `return_to_charge`: send a drone to a charging station.
-- `reserve_charger`: reserve charging capacity.
-- `hold_fleet`: pause operations in unsafe conditions.
-- `resume_operations`: restart operations after a hold.
-- `delay_order` and `swap_assignments`: handle scheduling or assignment changes.
+DroneZ rewards safe, useful progress and penalizes unsafe or wasteful behavior.
 
-## Reward System
+```mermaid
+mindmap
+  root((DroneZ Reward))
+    Positive
+      Successful delivery
+      Urgent delivery
+      Deadline met
+      Safe reroute
+      Battery-safe operation
+      Locker fallback
+    Negative
+      Invalid action
+      Missed deadline
+      Unsafe zone entry
+      Failed delivery
+      Critical battery
+      No-progress loop
+```
 
-Positive rewards are given for:
+```mermaid
+pie title "DroneZ optimization story"
+    "Safety" : 35
+    "Delivery reliability" : 25
+    "Urgent priority" : 15
+    "Battery discipline" : 15
+    "Regulatory compliance" : 10
+```
 
-- successful deliveries
-- urgent delivery success
-- completing deliveries before deadlines
-- safe reroutes
-- recovering from disruptions
-- battery-safe operation
-- efficient fleet usage
-- regulatory compliance
-- successful locker fallback
+## 📊 Evaluation Results
 
-Negative penalties are given for:
-
-- invalid actions
-- missed deadlines
-- failed delivery attempts
-- critical battery events
-- unsafe zone entry
-- unnecessary reroutes
-- abandoned urgent orders
-- idle fleet behavior while orders are waiting
-- charging misuse
-- loop or no-progress behavior
-
-The environment also includes safeguards: invalid actions are capped, episodes have action limits, deadline penalties are not double-counted, and reward breakdowns are logged for inspection.
-
-## Evaluation Results
-
-Results are generated from `artifacts/results/policy_comparison.json` and `artifacts/results/policy_comparison.csv`.
+Results are generated from [artifacts/results/policy_comparison.json](artifacts/results/policy_comparison.json) and [artifacts/results/policy_comparison.csv](artifacts/results/policy_comparison.csv).
 
 ### Aggregate Evaluation Across Easy, Medium, Hard, and Demo
 
@@ -124,8 +169,6 @@ Results are generated from `artifacts/results/policy_comparison.json` and `artif
 | heuristic | -281.500 | 0.0797 | 10 | 5 | 182 | 0 |
 | random | -921.500 | 0.0100 | 9 | 4 | 396 | 0 |
 | naive | -1038.000 | 0.0100 | 6 | 3 | 497 | 0 |
-
-The aggregate result shows that `improved` has the best mean reward, best normalized score, and zero safety violations. The heuristic baseline completes more deliveries overall, but it does so with much higher safety cost.
 
 ### Demo Scenario Headline
 
@@ -138,100 +181,88 @@ The aggregate result shows that `improved` has the best mean reward, best normal
 
 Demo takeaway: the deterministic improved policy keeps the same delivery count as the heuristic baseline while reducing safety violations from `8` to `0` and increasing reward from `32.0` to `89.0`.
 
-## Training Status
+<p align="center">
+  <img src="artifacts/plots/reward_comparison.png" alt="Reward comparison chart" width="32%">
+  <img src="artifacts/plots/delivery_success_comparison.png" alt="Delivery success chart" width="32%">
+  <img src="artifacts/plots/invalid_actions_comparison.png" alt="Invalid action comparison chart" width="32%">
+</p>
+
+## 🧪 Training Status
 
 The current proven improvement is deterministic policy improvement, not trained-model reward improvement.
 
-A real GRPO-style training run was attempted on an NVIDIA RTX 5060 Laptop GPU using `Qwen/Qwen2.5-0.5B-Instruct`. That run did not improve reward. The model produced invalid DroneZ actions, episodes ended with `invalid_action_cap_reached`, reward stayed flat, loss stayed `0.0`, and `eval_before` matched `eval_after`.
+A real GRPO-style run was attempted on an NVIDIA RTX 5060 Laptop GPU using `Qwen/Qwen2.5-0.5B-Instruct`. That run did not improve reward: model actions were invalid, episodes hit `invalid_action_cap_reached`, reward stayed flat, loss stayed `0.0`, and `eval_after` did not beat `eval_before`.
 
-The project now includes fixes for that bottleneck:
+What was improved after that failure:
 
 - compact action prompts
 - robust JSON parsing
 - safe action repair
-- candidate-choice mode, where the model can choose from valid actions instead of inventing JSON from scratch
+- candidate-choice mode
 - format-check diagnostics
 - SFT warm-start data from improved-policy traces
 
-Current format diagnostics in `artifacts/training/format_check/format_check.json` show:
+Current format diagnostics:
 
-- `valid_json_rate`: `0.875`
-- `valid_action_rate`: `0.875`
+| Metric | Value |
+| --- | ---: |
+| `valid_json_rate` | `0.875` |
+| `valid_action_rate` | `0.875` |
+| SFT examples | `108` |
 
-This is format reliability progress. It is not yet proof that a trained model improves reward. The README, pitch, and demo intentionally do not claim trained-model improvement.
+Training plots:
 
-## Training Logs and Artifacts
+<p align="center">
+  <img src="artifacts/plots/training_reward_curve.png" alt="Training reward curve" width="32%">
+  <img src="artifacts/plots/training_loss_curve.png" alt="Training loss curve" width="32%">
+  <img src="artifacts/plots/valid_action_rate.png" alt="Valid action rate chart" width="32%">
+</p>
 
-Small training and diagnostic artifacts are included:
+Honest claim: DroneZ includes a runnable training pipeline and real diagnostics, but no trained GRPO reward improvement is claimed yet.
 
-- `artifacts/training/local_sanity/sanity_check.json`
-- `artifacts/training/format_check/format_check.json`
-- `artifacts/training/sft_action_data.jsonl`
-- `artifacts/training/training_metrics.json`
-- `artifacts/training/eval_before.json`
-- `artifacts/training/eval_after.json`
-- `artifacts/training/candidate_grpo/training_metrics.json`
-- `artifacts/plots/training_reward_curve.png`
-- `artifacts/plots/training_loss_curve.png`
-- `artifacts/plots/valid_action_rate.png`
-- `artifacts/plots/eval_before_after.png`
+## 🖥️ Demos
 
-Training entrypoints:
+### Hugging Face Control Tower Demo
 
-- `scripts/train_grpo.py`
-- `scripts/train_grpo_local.py`
-- `scripts/train_grpo_colab.py`
-- `scripts/generate_sft_action_data.py`
-- `scripts/train_action_format_sft.py`
-- `notebooks/train_dronez_grpo_colab.ipynb`
+The hosted browser replay uses real DroneZ JSON traces and presents them as a professional hybrid-drone control tower.
 
-## Interactive Demonstration Interface
-
-The browser replay UI uses real JSON traces from the environment. It presents DroneZ as a high-tech hybrid-drone control tower rather than a simple grid.
-
-Key visual features:
+Features:
 
 - 2.5D procedural city map
-- curved route corridors
-- active drones and delivery orders
-- charging stations
-- weather overlays
-- no-fly zones
-- simulated telemetry
-- reward evolution tracking
-- recent events feed
-- control tower state monitoring
-- Stage Demo Mode for cleaner presentation
+- route corridors and mission events
+- drone telemetry cards
+- weather and no-fly overlays
+- charging stations and order markers
+- reward evolution and event timeline
+- control-tower status
 
-Route geometry, wind values, sensor indicators, and control-layer labels are derived visualization metadata. They are useful for explaining the simulated mission, but they are not real aircraft telemetry.
+Open: https://krishna2521-dronez-openenv.hf.space/demo/index.html
 
-## Standalone Cinematic Simulator
+### Standalone Cinematic Simulator
 
-The repo also includes a separate local simulator in `dronez_world_sim/`. It is intended for presentation and visual storytelling, while the OpenEnv runtime remains the authoritative environment.
-
-Run it locally from the repo root:
+The repo includes one standalone visual simulator:
 
 ```bash
 python -m http.server 8090
 ```
 
-Then open:
+Open:
 
 ```text
 http://127.0.0.1:8090/dronez_world_sim/index.html
 ```
 
-The standalone simulator includes a larger 3D-style world, drone switching, day/night mode, mission routes, a minimap, telemetry cards, and trace-aware scenario controls.
+This simulator is for visual storytelling. The OpenEnv runtime remains the source of truth.
 
-## Running Locally
+## 🛠️ Run Locally
 
-Install the package:
+Install:
 
 ```bash
 python -m pip install -e .
 ```
 
-Run the FastAPI/OpenEnv server:
+Start the API:
 
 ```bash
 python -m uvicorn server.app:app --host 127.0.0.1 --port 8000
@@ -245,7 +276,7 @@ http://127.0.0.1:8000/demo/index.html
 http://127.0.0.1:8000/docs
 ```
 
-Useful checks:
+Check endpoints:
 
 ```bash
 curl http://127.0.0.1:8000/health
@@ -254,22 +285,49 @@ curl http://127.0.0.1:8000/api
 curl http://127.0.0.1:8000/artifacts/traces/demo_improved_enriched.json
 ```
 
-## Docker
-
-Build and run:
+## 🐳 Docker
 
 ```bash
 docker build -t dronez .
 docker run --rm -p 8000:7860 dronez
 ```
 
-Then open:
+## 📦 Repository Layout
 
 ```text
-http://127.0.0.1:8000
+DroneZ/
+├── README.md                  # public judge-facing overview
+├── BLOG.md                    # writeup / article
+├── PITCH.md                   # short pitch script
+├── SUBMISSION_CHECKLIST.md    # final submission checklist
+├── openenv.yaml               # OpenEnv metadata
+├── Dockerfile                 # Hugging Face Space runtime
+├── src/urbanair/              # core environment, simulator, policies, API helpers
+├── server/                    # FastAPI entrypoint wrapper
+├── demo_ui/                   # hosted HF control-tower demo
+├── dronez_world_sim/          # standalone cinematic simulator
+├── scripts/                   # eval, trace, plot, and training scripts
+├── notebooks/                 # Colab training notebook
+├── artifacts/                 # small results, plots, traces, training diagnostics
+├── configs/                   # task, fleet, and reward configuration
+├── tests/                     # test suite
+└── docs/                      # learning, training, deployment, reports
 ```
 
-## Regenerating Results
+## 📚 Documentation
+
+The root is intentionally kept clean. Supporting docs live in [docs/](docs/README.md):
+
+- [Learn DroneZ From Zero](docs/learning/LEARN_DRONEZ_FROM_ZERO.md)
+- [File-by-File Guide](docs/learning/FILE_BY_FILE_GUIDE.md)
+- [Tech Stack Explained](docs/learning/TECH_STACK_EXPLAINED.md)
+- [Drone RL Product Architecture](docs/learning/DRONE_RL_PRODUCT_ARCHITECTURE.md)
+- [Colab Training Guide](docs/training/COLAB_TRAINING.md)
+- [Training Results Explained](docs/training/TRAINING_RESULTS_EXPLAINED.md)
+- [HF Space Deployment](docs/deployment/HF_SPACE_DEPLOYMENT.md)
+- [Final Readiness Report](docs/reports/FINAL_READINESS_REPORT.md)
+
+## 🔁 Regenerate Results
 
 ```bash
 python scripts/evaluate_policies.py
@@ -292,34 +350,29 @@ python scripts/train_grpo_local.py --format-check --model Qwen/Qwen2.5-0.5B-Inst
 python scripts/generate_sft_action_data.py --tasks easy,medium,demo,hard --output artifacts/training/sft_action_data.jsonl
 ```
 
-## Hugging Face Space
-
-The Hugging Face Space is the main evaluation target:
-
-- Space repo: https://huggingface.co/spaces/Krishna2521/dronez-openenv
-- Runtime: https://krishna2521-dronez-openenv.hf.space
-- Demo: https://krishna2521-dronez-openenv.hf.space/demo/index.html
-- Docs: https://krishna2521-dronez-openenv.hf.space/docs
-
-## Limitations
+## ⚠️ Limitations
 
 DroneZ does not yet simulate:
 
 - full Isaac Sim, Gazebo, AirSim, or real aerodynamics
-- real propeller or motor control
+- real motor or propeller control
 - certified aviation behavior
 - real GPS, camera, LiDAR, radar, or thermal streams
 - proven trained-model reward improvement from GRPO
 
-The current honest status is:
+Visual telemetry in the demo is simulated metadata derived from environment traces, not real aircraft telemetry.
+
+## ✅ Final Submission Status
 
 - Environment: working
 - OpenEnv API: working
-- Docker/HF Space deployment: working
+- HF Space: live
+- Docker: validated
+- Tests: `79 passed`
 - Deterministic improved policy: proven better than baselines on reward and safety
 - Real GRPO improvement: attempted, but not proven yet
-- Training pipeline: improved with candidate-choice, format diagnostics, and SFT warm-start data
+- Final submission URL: https://huggingface.co/spaces/Krishna2521/dronez-openenv
 
-## Conclusion
+## 🧭 Final Takeaway
 
 Drone delivery is not just about flying. It is about decision-making under uncertainty. DroneZ shifts the focus from fixed routes to adaptive fleet intelligence, where actions are evaluated through rewards and policies can move toward safer, faster, and more reliable delivery operations.
