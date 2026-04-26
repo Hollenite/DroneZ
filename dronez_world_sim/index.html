@@ -26,14 +26,20 @@
     <main class="sim-shell">
       <section class="viewport">
         <div id="world"></div>
+        <div class="scene-vignette"></div>
         <div class="film-bars"></div>
         <div class="hud top-left">
-          <p class="kicker">DroneZ premium simulation layer</p>
+          <p class="kicker">DroneZ Atlas / premium simulation layer</p>
           <h1>Hybrid Drone World</h1>
           <p>
             3D fleet simulator for mission-level RL: PID/sensors stabilize each drone,
             while the control-tower AI assigns, reroutes, charges, and prioritizes missions.
           </p>
+          <div class="hero-badges">
+            <span>42-drone fleet</span>
+            <span>3D follow camera</span>
+            <span>Trace-aware replay</span>
+          </div>
         </div>
 
         <div class="hud top-right">
@@ -44,17 +50,32 @@
         </div>
 
         <div class="hud bottom-center">
-          <button data-mode="operations">Operations</button>
-          <button data-mode="follow">Drone Follow</button>
-          <button data-mode="cinematic">Cinematic Film</button>
-          <button data-mode="warehouse">Warehouse</button>
+          <button data-mode="operations"><span>01</span> Operations</button>
+          <button data-mode="follow"><span>02</span> Drone Follow</button>
+          <button data-mode="cinematic"><span>03</span> Cinematic Film</button>
+          <button data-mode="warehouse"><span>04</span> Warehouse</button>
           <button id="launchBtn">Launch Fleet</button>
         </div>
 
         <canvas id="minimap" width="360" height="260" aria-label="2D tactical minimap"></canvas>
+        <div class="mission-timeline">
+          <span class="active">Launch</span>
+          <span>Route scan</span>
+          <span>Weather reroute</span>
+          <span>Delivery</span>
+        </div>
       </section>
 
       <aside class="control-panel">
+        <section class="panel command-summary">
+          <p class="kicker">Command center</p>
+          <div class="summary-grid">
+            <div><span>Active</span><b>09</b></div>
+            <div><span>Docked</span><b>25</b></div>
+            <div><span>Standby</span><b>08</b></div>
+          </div>
+        </section>
+
         <section class="panel hero-panel">
           <p class="kicker">Selected drone</p>
           <h2 id="droneName">DZ-01</h2>

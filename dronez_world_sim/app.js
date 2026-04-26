@@ -41,8 +41,8 @@ renderer.toneMappingExposure = 1.16;
 root.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x060a10);
-scene.fog = new THREE.FogExp2(0x07111c, 0.0038);
+scene.background = new THREE.Color(0x090d12);
+scene.fog = new THREE.FogExp2(0x121820, 0.0032);
 
 const camera = new THREE.PerspectiveCamera(58, root.clientWidth / root.clientHeight, 0.1, 2600);
 camera.position.set(230, 150, 280);
@@ -60,11 +60,11 @@ composer.addPass(new RenderPass(scene, camera));
 composer.addPass(new UnrealBloomPass(new THREE.Vector2(root.clientWidth, root.clientHeight), 0.42, 0.78, 0.18));
 
 const mats = {
-  ground: new THREE.MeshStandardMaterial({ color: 0x1a3023, roughness: 0.92, metalness: 0.02 }),
-  runway: new THREE.MeshStandardMaterial({ color: 0x1e2730, roughness: 0.7, metalness: 0.04 }),
-  building: new THREE.MeshStandardMaterial({ color: 0x263647, roughness: 0.66, metalness: 0.14 }),
-  buildingBlue: new THREE.MeshStandardMaterial({ color: 0x1d4e63, roughness: 0.56, metalness: 0.22, emissive: 0x021018 }),
-  glass: new THREE.MeshStandardMaterial({ color: 0x5fcfff, roughness: 0.22, metalness: 0.1, transparent: true, opacity: 0.42 }),
+  ground: new THREE.MeshStandardMaterial({ color: 0x263322, roughness: 0.95, metalness: 0.02 }),
+  runway: new THREE.MeshStandardMaterial({ color: 0x232b34, roughness: 0.68, metalness: 0.08 }),
+  building: new THREE.MeshStandardMaterial({ color: 0x2c3540, roughness: 0.64, metalness: 0.18 }),
+  buildingBlue: new THREE.MeshStandardMaterial({ color: 0x2b4c57, roughness: 0.52, metalness: 0.25, emissive: 0x030f12 }),
+  glass: new THREE.MeshPhysicalMaterial({ color: 0x8be4e7, roughness: 0.16, metalness: 0.08, transparent: true, opacity: 0.38, transmission: 0.18 }),
   route: new THREE.LineBasicMaterial({ color: 0xb894ff, transparent: true, opacity: 0.9 }),
   safe: new THREE.LineBasicMaterial({ color: 0x7dffb2, transparent: true, opacity: 0.9 }),
   caution: new THREE.LineBasicMaterial({ color: 0xffd36e, transparent: true, opacity: 0.86 }),
@@ -75,14 +75,17 @@ const mats = {
 
 const drones = [];
 const routes = [];
+const routePulses = [];
 const pads = [];
 const worldObjects = new THREE.Group();
+const selectedMarker = new THREE.Group();
 scene.add(worldObjects);
 
 setupLighting();
 buildWorld();
 buildFleet();
 buildRoutes();
+buildSelectedMarker();
 loadTraceHint();
 bindUi();
 onResize();
@@ -91,11 +94,11 @@ document.body.classList.add("ready");
 animate();
 
 function setupLighting() {
-  const hemi = new THREE.HemisphereLight(0xb7e6ff, 0x15220e, 1.1);
+  const hemi = new THREE.HemisphereLight(0xd6e9ff, 0x1a2015, 1.18);
   scene.add(hemi);
 
-  const sun = new THREE.DirectionalLight(0xffd0a0, 3.2);
-  sun.position.set(-240, 340, 180);
+  const sun = new THREE.DirectionalLight(0xffd7a1, 3.7);
+  sun.position.set(-260, 360, 220);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
   sun.shadow.camera.near = 1;
@@ -106,9 +109,13 @@ function setupLighting() {
   sun.shadow.camera.bottom = -480;
   scene.add(sun);
 
-  const cityGlow = new THREE.PointLight(0x69f7ff, 1.8, 520, 1.2);
+  const cityGlow = new THREE.PointLight(0x8be4e7, 1.35, 520, 1.2);
   cityGlow.position.set(90, 90, -120);
   scene.add(cityGlow);
+
+  const runwayWarmth = new THREE.PointLight(0xf2c879, 1.15, 260, 1.4);
+  runwayWarmth.position.set(-210, 70, 170);
+  scene.add(runwayWarmth);
 }
 
 function buildWorld() {
@@ -127,7 +134,7 @@ function buildWorld() {
 }
 
 function addGridGlow() {
-  const grid = new THREE.GridHelper(WORLD, 44, 0x19495b, 0x15313f);
+  const grid = new THREE.GridHelper(WORLD, 44, 0x365560, 0x26333b);
   grid.position.y = 0.08;
   worldObjects.add(grid);
 
@@ -143,6 +150,14 @@ function addRoad(x, z, w, d, rot) {
   road.rotation.y = rot;
   road.receiveShadow = true;
   worldObjects.add(road);
+
+  const stripe = new THREE.Mesh(
+    new THREE.BoxGeometry(d > w ? 1.4 : Math.max(2, w - 18), 0.2, d > w ? Math.max(2, d - 18) : 1.4),
+    new THREE.MeshBasicMaterial({ color: 0xf2c879, transparent: true, opacity: 0.22 })
+  );
+  stripe.position.copy(road.position);
+  stripe.position.y += 0.12;
+  worldObjects.add(stripe);
 }
 
 function addWarehouse() {
@@ -156,11 +171,11 @@ function addWarehouse() {
   hangar.add(floor);
 
   const roof = new THREE.Mesh(new THREE.BoxGeometry(190, 12, 138), new THREE.MeshStandardMaterial({
-    color: 0x122232,
+    color: 0x182532,
     roughness: 0.38,
     metalness: 0.42,
     transparent: true,
-    opacity: 0.82,
+    opacity: 0.88,
   }));
   roof.position.y = 44;
   roof.castShadow = true;
@@ -183,6 +198,8 @@ function addWarehouse() {
       pads.push(pad);
     }
   }
+
+  hangar.add(makeLabel("DRONE PORT / WAREHOUSE", 0, 62, -78, 0xf2c879));
 }
 
 function createPad() {
@@ -195,7 +212,7 @@ function createPad() {
   }));
   disc.castShadow = true;
   pad.add(disc);
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(8.2, 0.35, 8, 48), new THREE.MeshBasicMaterial({ color: 0x69f7ff }));
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(8.2, 0.35, 8, 48), new THREE.MeshBasicMaterial({ color: 0xf2c879 }));
   ring.rotation.x = Math.PI / 2;
   ring.position.y = 0.8;
   pad.add(ring);
@@ -215,11 +232,12 @@ function addCity() {
     worldObjects.add(building);
 
     if (i % 5 === 0) {
-      const light = new THREE.PointLight(0x69f7ff, 0.25, 58);
+      const light = new THREE.PointLight(i % 2 ? 0x8be4e7 : 0xf2c879, 0.22, 58);
       light.position.set(x, h + 4, z);
       worldObjects.add(light);
     }
   }
+  worldObjects.add(makeLabel("DENSE CITY DELIVERY GRID", 135, 132, -280, 0x8be4e7));
 }
 
 function addIndustrialDistrict() {
@@ -229,6 +247,7 @@ function addIndustrialDistrict() {
     stack.castShadow = true;
     worldObjects.add(stack);
   }
+  worldObjects.add(makeLabel("INDUSTRIAL LOGISTICS DISTRICT", 270, 92, 150, 0xf2c879));
 }
 
 function addTerrain() {
@@ -255,11 +274,13 @@ function addWeatherVolumes() {
   const storm = new THREE.Mesh(new THREE.CylinderGeometry(78, 102, 210, 64, 1, true), mats.weather);
   storm.position.set(170, 105, -180);
   worldObjects.add(storm);
+  worldObjects.add(makeLabel("STORM / WIND SHEAR", 170, 220, -180, 0x7cb4ff));
 
   const noFly = new THREE.Mesh(new THREE.CylinderGeometry(58, 70, 160, 6, 1, true), mats.noFly);
   noFly.position.set(-30, 80, -210);
   noFly.rotation.y = Math.PI / 6;
   worldObjects.add(noFly);
+  worldObjects.add(makeLabel("NO-FLY VOLUME", -30, 172, -210, 0xf36f7f));
 }
 
 function addLandingZones() {
@@ -283,6 +304,7 @@ function addLandingZones() {
     zone.userData = { label: name };
     zone.position.set(x, 0, z);
     worldObjects.add(zone);
+    worldObjects.add(makeLabel(name.toUpperCase(), x, 28, z + 24, color));
   });
 }
 
@@ -317,8 +339,8 @@ function buildFleet() {
 
 function createDrone(color) {
   const group = new THREE.Group();
-  const bodyMat = new THREE.MeshStandardMaterial({ color, roughness: 0.28, metalness: 0.62, emissive: color, emissiveIntensity: 0.08 });
-  const darkMat = new THREE.MeshStandardMaterial({ color: 0x05070a, roughness: 0.4, metalness: 0.55 });
+  const bodyMat = new THREE.MeshStandardMaterial({ color, roughness: 0.24, metalness: 0.68, emissive: color, emissiveIntensity: 0.06 });
+  const darkMat = new THREE.MeshStandardMaterial({ color: 0x111419, roughness: 0.35, metalness: 0.62 });
   const body = new THREE.Mesh(new THREE.SphereGeometry(5.2, 32, 16), bodyMat);
   body.scale.set(1.35, 0.52, 1);
   body.castShadow = true;
@@ -343,7 +365,7 @@ function createDrone(color) {
     arm.castShadow = true;
     group.add(arm);
 
-    const rotor = new THREE.Mesh(new THREE.CylinderGeometry(4.8, 4.8, 0.28, 40), new THREE.MeshBasicMaterial({ color: 0xeafcff, transparent: true, opacity: 0.32 }));
+    const rotor = new THREE.Mesh(new THREE.CylinderGeometry(4.8, 4.8, 0.28, 40), new THREE.MeshBasicMaterial({ color: 0xf7f4eb, transparent: true, opacity: 0.28 }));
     rotor.position.set(x, 1.2, z);
     rotor.userData.rotor = true;
     group.add(rotor);
@@ -368,7 +390,74 @@ function buildRoutes() {
     line.userData.progress = Math.random();
     worldObjects.add(line);
     routes.push(line);
+
+    const tube = new THREE.Mesh(
+      new THREE.TubeGeometry(curve, 80, 0.75, 8, false),
+      new THREE.MeshBasicMaterial({ color: route.mat.color, transparent: true, opacity: 0.17 })
+    );
+    worldObjects.add(tube);
+
+    const pulse = new THREE.Mesh(
+      new THREE.SphereGeometry(3.2, 20, 12),
+      new THREE.MeshBasicMaterial({ color: route.mat.color, transparent: true, opacity: 0.92 })
+    );
+    pulse.userData.curve = curve;
+    pulse.userData.offset = Math.random();
+    worldObjects.add(pulse);
+    routePulses.push(pulse);
   });
+}
+
+function buildSelectedMarker() {
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(16, 0.7, 10, 80), new THREE.MeshBasicMaterial({ color: 0xf2c879, transparent: true, opacity: 0.9 }));
+  ring.rotation.x = Math.PI / 2;
+  selectedMarker.add(ring);
+
+  const beam = new THREE.Mesh(
+    new THREE.CylinderGeometry(11, 18, 82, 36, 1, true),
+    new THREE.MeshBasicMaterial({ color: 0xf2c879, transparent: true, opacity: 0.09, depthWrite: false })
+  );
+  beam.position.y = 36;
+  selectedMarker.add(beam);
+  worldObjects.add(selectedMarker);
+}
+
+function makeLabel(text, x, y, z, color) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 512;
+  canvas.height = 96;
+  const labelCtx = canvas.getContext("2d");
+  labelCtx.clearRect(0, 0, canvas.width, canvas.height);
+  labelCtx.fillStyle = "rgba(7,10,15,0.62)";
+  drawCanvasRoundRect(labelCtx, 18, 18, 476, 58, 20);
+  labelCtx.fill();
+  labelCtx.strokeStyle = `#${color.toString(16).padStart(6, "0")}`;
+  labelCtx.lineWidth = 2;
+  labelCtx.stroke();
+  labelCtx.fillStyle = "#f4f7f9";
+  labelCtx.font = "800 27px Avenir Next, Segoe UI, sans-serif";
+  labelCtx.textAlign = "center";
+  labelCtx.fillText(text, 256, 56);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, depthWrite: false }));
+  sprite.position.set(x, y, z);
+  sprite.scale.set(82, 15, 1);
+  return sprite;
+}
+
+function drawCanvasRoundRect(labelCtx, x, y, width, height, radius) {
+  labelCtx.beginPath();
+  labelCtx.moveTo(x + radius, y);
+  labelCtx.lineTo(x + width - radius, y);
+  labelCtx.quadraticCurveTo(x + width, y, x + width, y + radius);
+  labelCtx.lineTo(x + width, y + height - radius);
+  labelCtx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+  labelCtx.lineTo(x + radius, y + height);
+  labelCtx.quadraticCurveTo(x, y + height, x, y + height - radius);
+  labelCtx.lineTo(x, y + radius);
+  labelCtx.quadraticCurveTo(x, y, x + radius, y);
+  labelCtx.closePath();
 }
 
 async function loadTraceHint() {
@@ -417,16 +506,24 @@ function updatePanel() {
   droneName.textContent = drone.id;
   droneClass.textContent = drone.type.name;
   routeName.textContent = `${drone.id}: Hub → ${drone.risk === "No-fly avoidance" ? "Emergency corridor" : "Mission target"}`;
+  const battery = Math.max(8, Math.round(drone.battery));
+  const speed = Math.max(0, Math.round(drone.speed));
   telemetryGrid.innerHTML = [
-    ["Battery", `${Math.max(8, Math.round(drone.battery))}%`],
-    ["Altitude", `${Math.round(drone.altitude)} m`],
-    ["Speed", `${Math.round(drone.speed)} kph`],
-    ["ETA", `${Math.max(1, Math.round(drone.eta))} min`],
-    ["Payload", drone.type.payload],
-    ["Risk", drone.risk],
-    ["GPS", "RTK locked"],
-    ["Sensors", "IMU + camera + LiDAR nominal"],
-  ].map(([label, value]) => `<div class="metric"><span>${label}</span><b>${value}</b></div>`).join("");
+    ["Battery", `${battery}%`, battery],
+    ["Altitude", `${Math.round(drone.altitude)} m`, Math.min(100, Math.round(drone.altitude / 1.8))],
+    ["Speed", `${speed} kph`, Math.min(100, Math.round(speed / 1.4))],
+    ["ETA", `${Math.max(1, Math.round(drone.eta))} min`, Math.max(12, 100 - Math.round(drone.eta * 8))],
+    ["Payload", drone.type.payload, 74],
+    ["Risk", drone.risk, drone.risk === "Nominal" ? 82 : 48],
+    ["GPS", "RTK locked", 96],
+    ["Sensors", "IMU + LiDAR nominal", 94],
+  ].map(([label, value, meter]) => `
+    <div class="metric">
+      <span>${label}</span>
+      <b>${value}</b>
+      <em class="meter"><i style="--value:${meter}%"></i></em>
+    </div>
+  `).join("");
 }
 
 function animate() {
@@ -466,6 +563,17 @@ function animateWorld(dt, t) {
       data.speed = 0;
     }
   });
+
+  routePulses.forEach((pulse, index) => {
+    const p = ((t * 0.1) + pulse.userData.offset + index * 0.12) % 1;
+    pulse.position.copy(pulse.userData.curve.getPointAt(p));
+    pulse.scale.setScalar(0.75 + Math.sin(t * 4 + index) * 0.12);
+  });
+
+  const selectedDrone = drones[selected.index].group;
+  selectedMarker.position.copy(selectedDrone.position);
+  selectedMarker.position.y = Math.max(2, selectedDrone.position.y - 9);
+  selectedMarker.rotation.y += dt * 0.9;
 
   weatherLabel.textContent = Math.sin(t * 0.08) > 0.35 ? "Storm risk" : "Clear";
   if (Math.floor(t * 2) % 2 === 0) updatePanel();
