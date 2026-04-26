@@ -16,12 +16,27 @@ const weatherLabel = document.getElementById("weatherLabel");
 const routeName = document.getElementById("routeName");
 const routeStatus = document.getElementById("routeStatus");
 const launchBtn = document.getElementById("launchBtn");
+const themeBtn = document.getElementById("themeBtn");
+const perfBtn = document.getElementById("perfBtn");
+const scenarioSelect = document.getElementById("scenarioSelect");
+const policySelect = document.getElementById("policySelect");
+const traceStatus = document.getElementById("traceStatus");
 
-const WORLD = 680;
+const WORLD = 1100;
 const DRONE_COUNT = 42;
 const modeButtons = [...document.querySelectorAll("[data-mode]")];
 const clock = new THREE.Clock();
-const selected = { id: "DZ-01", index: 0, mode: "operations", launched: false };
+const selected = {
+  id: "DZ-01",
+  index: 0,
+  mode: "operations",
+  launched: false,
+  day: false,
+  performance: false,
+  traceTask: "demo",
+  tracePolicy: "improved",
+  lastPanelUpdate: 0,
+};
 const droneTypes = [
   { name: "Light delivery drone", color: 0x69f7ff, speed: 1.0, payload: "2.0 kg" },
   { name: "Urgent medical drone", color: 0xffd36e, speed: 1.28, payload: "1.2 kg cold-chain" },
@@ -76,9 +91,12 @@ const mats = {
 const drones = [];
 const routes = [];
 const routePulses = [];
+const routeTubes = [];
 const pads = [];
 const worldObjects = new THREE.Group();
 const selectedMarker = new THREE.Group();
+const lights = {};
+const traceState = { payload: null, frames: [], mode: "Cinematic Simulation Mode" };
 scene.add(worldObjects);
 
 setupLighting();
@@ -95,26 +113,30 @@ animate();
 
 function setupLighting() {
   const hemi = new THREE.HemisphereLight(0xd6e9ff, 0x1a2015, 1.18);
+  lights.hemi = hemi;
   scene.add(hemi);
 
   const sun = new THREE.DirectionalLight(0xffd7a1, 3.7);
-  sun.position.set(-260, 360, 220);
+  sun.position.set(-360, 460, 300);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
   sun.shadow.camera.near = 1;
-  sun.shadow.camera.far = 900;
-  sun.shadow.camera.left = -480;
-  sun.shadow.camera.right = 480;
-  sun.shadow.camera.top = 480;
-  sun.shadow.camera.bottom = -480;
+  sun.shadow.camera.far = 1400;
+  sun.shadow.camera.left = -720;
+  sun.shadow.camera.right = 720;
+  sun.shadow.camera.top = 720;
+  sun.shadow.camera.bottom = -720;
+  lights.sun = sun;
   scene.add(sun);
 
   const cityGlow = new THREE.PointLight(0x8be4e7, 1.35, 520, 1.2);
   cityGlow.position.set(90, 90, -120);
+  lights.cityGlow = cityGlow;
   scene.add(cityGlow);
 
   const runwayWarmth = new THREE.PointLight(0xf2c879, 1.15, 260, 1.4);
   runwayWarmth.position.set(-210, 70, 170);
+  lights.runwayWarmth = runwayWarmth;
   scene.add(runwayWarmth);
 }
 
@@ -131,6 +153,8 @@ function buildWorld() {
   addTerrain();
   addWeatherVolumes();
   addLandingZones();
+  addAirCorridors();
+  addOuterDistricts();
 }
 
 function addGridGlow() {
@@ -290,6 +314,13 @@ function addLandingZones() {
     ["Suburb", 265, 60, 0x69f7ff],
     ["Market", -280, -90, 0xb894ff],
     ["Emergency", 255, 245, 0xff5c78],
+    ["Cold Chain", -420, -350, 0xffd36e],
+    ["Residential", 420, -60, 0x69f7ff],
+    ["Rural Clinic", -470, 260, 0x7dffb2],
+    ["Campus Lab", 55, -420, 0xb894ff],
+    ["Port Dock", 430, 320, 0x8be4e7],
+    ["Inspection Tower", 10, 360, 0xf2c879],
+    ["Locker Bank", -360, 20, 0x7cb4ff],
   ].forEach(([name, x, z, color]) => {
     const zone = new THREE.Group();
     const disc = new THREE.Mesh(new THREE.CylinderGeometry(18, 18, 1, 48), new THREE.MeshStandardMaterial({
@@ -306,6 +337,40 @@ function addLandingZones() {
     worldObjects.add(zone);
     worldObjects.add(makeLabel(name.toUpperCase(), x, 28, z + 24, color));
   });
+}
+
+function addAirCorridors() {
+  const corridorMat = new THREE.MeshBasicMaterial({ color: 0x8be4e7, transparent: true, opacity: 0.055, depthWrite: false });
+  [
+    [[-470, 72, 260], [-210, 88, 170], [-75, 92, -255], [55, 88, -420]],
+    [[-210, 82, 170], [20, 120, 120], [265, 96, 60], [430, 96, 320]],
+    [[-420, 82, -350], [-75, 90, -255], [150, 100, -245], [420, 95, -60]],
+  ].forEach((points) => {
+    const curve = new THREE.CatmullRomCurve3(points.map(([x, y, z]) => new THREE.Vector3(x, y, z)));
+    const tube = new THREE.Mesh(new THREE.TubeGeometry(curve, 80, 4, 10, false), corridorMat);
+    worldObjects.add(tube);
+  });
+}
+
+function addOuterDistricts() {
+  for (let i = 0; i < 55; i += 1) {
+    const h = 10 + (i % 6) * 6;
+    const block = new THREE.Mesh(new THREE.BoxGeometry(18 + (i % 5) * 4, h, 16 + (i % 4) * 4), mats.building);
+    block.position.set(-515 + (i % 11) * 34, h / 2, -500 + Math.floor(i / 11) * 38);
+    block.castShadow = true;
+    block.receiveShadow = true;
+    worldObjects.add(block);
+  }
+
+  for (let i = 0; i < 36; i += 1) {
+    const mast = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 2.2, 55 + (i % 4) * 12, 12), mats.buildingBlue);
+    mast.position.set(360 + (i % 9) * 25, 34, -410 + Math.floor(i / 9) * 42);
+    mast.castShadow = true;
+    worldObjects.add(mast);
+  }
+
+  worldObjects.add(makeLabel("RESIDENTIAL EDGE", -420, 70, -470, 0x69f7ff));
+  worldObjects.add(makeLabel("SENSOR / COMMS TOWERS", 440, 112, -420, 0xf2c879));
 }
 
 function buildFleet() {
@@ -327,6 +392,9 @@ function buildFleet() {
       risk: i % 9 === 0 ? "Weather reroute" : i % 13 === 0 ? "No-fly avoidance" : "Nominal",
       status: i < 9 ? "Active mission" : i < 34 ? "Docked / charging" : "Standby",
       phase: i * 0.17,
+      routeIndex: i % 10,
+      routeProgress: (i % 9) * 0.05,
+      targetProgress: (i % 9) * 0.05,
     };
     worldObjects.add(drone.group);
     drones.push(drone);
@@ -383,6 +451,12 @@ function buildRoutes() {
     { points: [[-210, 18, 170], [-40, 120, 110], [120, 150, -40], [150, 64, -245]], mat: mats.safe },
     { points: [[-210, 18, 170], [-120, 80, -20], [-20, 112, -210], [170, 70, -180]], mat: mats.caution },
     { points: [[-210, 18, 170], [-80, 60, -120], [-30, 80, -210]], mat: mats.blocked },
+    { points: [[-210, 18, 170], [-330, 92, 80], [-420, 84, -130], [-420, 54, -350]], mat: mats.safe },
+    { points: [[-210, 18, 170], [-85, 105, 180], [130, 118, 160], [430, 58, 320]], mat: mats.route },
+    { points: [[-210, 18, 170], [-260, 98, 245], [-390, 92, 300], [-470, 58, 260]], mat: mats.safe },
+    { points: [[-210, 18, 170], [-60, 135, 255], [15, 124, 360], [10, 58, 360]], mat: mats.caution },
+    { points: [[-210, 18, 170], [-95, 120, 60], [110, 135, -330], [55, 58, -420]], mat: mats.route },
+    { points: [[-210, 18, 170], [70, 118, 100], [275, 100, 20], [420, 58, -60]], mat: mats.safe },
   ].forEach((route) => {
     const curve = new THREE.CatmullRomCurve3(route.points.map(([x, y, z]) => new THREE.Vector3(x, y, z)));
     const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(curve.getPoints(90)), route.mat);
@@ -461,13 +535,26 @@ function drawCanvasRoundRect(labelCtx, x, y, width, height, radius) {
 }
 
 async function loadTraceHint() {
+  const task = scenarioSelect?.value || selected.traceTask;
+  const policy = policySelect?.value || selected.tracePolicy;
+  selected.traceTask = task;
+  selected.tracePolicy = policy;
   try {
-    const response = await fetch("../artifacts/traces/demo_improved_enriched.json", { cache: "no-store" });
-    if (!response.ok) return;
+    const response = await fetch(`../artifacts/traces/${task}_${policy}_enriched.json`, { cache: "no-store" });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const payload = await response.json();
-    routeStatus.textContent = `Connected to DroneZ enriched trace: ${payload.frames?.length || 0} replay frames available. 3D geometry is cinematic visualization, not real GPS.`;
+    traceState.payload = payload;
+    traceState.frames = payload.frames || [];
+    traceState.mode = "Trace Replay Mode";
+    const reward = payload.summary?.total_reward ?? payload.summary?.mean_total_reward ?? "n/a";
+    routeStatus.textContent = `Connected to DroneZ ${task}/${policy} enriched trace: ${traceState.frames.length} replay frames, reward ${reward}. 3D geometry is cinematic visualization, not real GPS.`;
+    if (traceStatus) traceStatus.textContent = `Trace Replay Mode: ${task} / ${policy} (${traceState.frames.length} frames)`;
   } catch {
+    traceState.payload = null;
+    traceState.frames = [];
+    traceState.mode = "Cinematic Simulation Mode";
     routeStatus.textContent = "Standalone cinematic simulation running without trace file. 3D world uses built-in mission data.";
+    if (traceStatus) traceStatus.textContent = `Cinematic Simulation Mode: no trace found for ${task} / ${policy}`;
   }
 }
 
@@ -489,8 +576,39 @@ function bindUi() {
     });
   });
 
+  themeBtn.addEventListener("click", () => {
+    selected.day = !selected.day;
+    document.body.classList.toggle("day", selected.day);
+    themeBtn.textContent = selected.day ? "Night Mode" : "Day Mode";
+    applyTheme();
+  });
+
+  perfBtn.addEventListener("click", () => {
+    selected.performance = !selected.performance;
+    perfBtn.classList.toggle("active", selected.performance);
+    perfBtn.textContent = selected.performance ? "Quality Mode" : "Performance";
+    renderer.setPixelRatio(selected.performance ? 1 : Math.min(window.devicePixelRatio || 1, 1.7));
+    if (selected.performance) composer.passes[1].strength = 0.18;
+    else composer.passes[1].strength = 0.42;
+    onResize();
+  });
+
+  scenarioSelect.addEventListener("change", loadTraceHint);
+  policySelect.addEventListener("change", loadTraceHint);
+
   setMode("operations");
   updatePanel();
+}
+
+function applyTheme() {
+  scene.background.set(selected.day ? 0xc7d8e0 : 0x090d12);
+  scene.fog.color.set(selected.day ? 0xc7d8e0 : 0x121820);
+  scene.fog.density = selected.day ? 0.0018 : 0.0032;
+  renderer.toneMappingExposure = selected.day ? 1.28 : 1.16;
+  lights.hemi.intensity = selected.day ? 1.65 : 1.18;
+  lights.sun.intensity = selected.day ? 4.4 : 3.7;
+  lights.cityGlow.intensity = selected.day ? 0.55 : 1.35;
+  lights.runwayWarmth.intensity = selected.day ? 0.5 : 1.15;
 }
 
 function setMode(mode) {
@@ -547,12 +665,17 @@ function animateWorld(dt, t) {
     });
 
     if (index < activeCount || index === selected.index) {
-      const route = routes[index % routes.length].userData.curve;
-      const p = ((t * 0.025 * data.type.speed) + data.phase) % 1;
+      const route = routes[data.routeIndex % routes.length].userData.curve;
+      data.targetProgress = (data.targetProgress + dt * 0.018 * data.type.speed) % 1;
+      data.routeProgress += shortestProgressDelta(data.routeProgress, data.targetProgress) * 0.08;
+      if (data.routeProgress < 0) data.routeProgress += 1;
+      if (data.routeProgress > 1) data.routeProgress -= 1;
+      const p = data.routeProgress;
       const pos = route.getPointAt(p);
-      group.position.lerp(pos, 0.045);
+      group.position.lerp(pos, 1 - Math.pow(0.0008, dt));
       const ahead = route.getPointAt((p + 0.01) % 1);
-      group.lookAt(ahead);
+      const lookTarget = ahead.clone().lerp(group.position, 0.18);
+      group.lookAt(lookTarget);
       group.position.y += Math.sin(t * 4 + index) * 0.03;
       data.speed = 48 + data.type.speed * 42 + Math.sin(t + index) * 8;
       data.altitude = group.position.y;
@@ -576,7 +699,17 @@ function animateWorld(dt, t) {
   selectedMarker.rotation.y += dt * 0.9;
 
   weatherLabel.textContent = Math.sin(t * 0.08) > 0.35 ? "Storm risk" : "Clear";
-  if (Math.floor(t * 2) % 2 === 0) updatePanel();
+  if (t - selected.lastPanelUpdate > 0.35) {
+    selected.lastPanelUpdate = t;
+    updatePanel();
+  }
+}
+
+function shortestProgressDelta(current, target) {
+  let delta = target - current;
+  if (delta > 0.5) delta -= 1;
+  if (delta < -0.5) delta += 1;
+  return delta;
 }
 
 function moveCamera(dt, t) {

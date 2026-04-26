@@ -34,6 +34,21 @@ body {
     linear-gradient(135deg, #070a0f, #101720 44%, #080b10);
 }
 
+body.day {
+  --bg: #eef3f2;
+  --surface: rgba(255, 255, 255, 0.76);
+  --surface-strong: rgba(255, 255, 255, 0.92);
+  --line: rgba(40, 61, 72, 0.14);
+  --line-strong: rgba(40, 61, 72, 0.22);
+  --text: #101820;
+  --muted: #61717d;
+  --muted-2: #80909b;
+  background:
+    radial-gradient(circle at 12% 10%, rgba(242, 200, 121, 0.18), transparent 28%),
+    radial-gradient(circle at 78% 82%, rgba(124, 180, 255, 0.16), transparent 34%),
+    linear-gradient(135deg, #edf3f2, #dfe9ed 44%, #f7f3eb);
+}
+
 button,
 select {
   font: inherit;
@@ -399,6 +414,45 @@ button.active span {
   margin-bottom: 12px;
   color: #0b1118;
   background: linear-gradient(135deg, #f4d89b, #f7fbff);
+}
+
+.trace-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.trace-controls label {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 850;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.trace-controls select {
+  width: 100%;
+  margin-top: 7px;
+  color: #0b1118;
+  background: linear-gradient(135deg, #ffffff, #dfeef1);
+}
+
+.trace-status {
+  margin-top: 12px;
+  border: 1px solid rgba(226, 236, 244, 0.12);
+  border-radius: 16px;
+  padding: 10px 12px;
+  color: #d1d9df;
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 0.82rem;
+  font-weight: 760;
+}
+
+body.day .trace-status,
+body.day .top-left p:not(.kicker),
+body.day .tower-list,
+body.day .drone-class {
+  color: #3f4d58;
 }
 
 .drone-class {

@@ -54,6 +54,8 @@
           <button data-mode="follow"><span>02</span> Drone Follow</button>
           <button data-mode="cinematic"><span>03</span> Cinematic Film</button>
           <button data-mode="warehouse"><span>04</span> Warehouse</button>
+          <button id="themeBtn">Day Mode</button>
+          <button id="perfBtn">Performance</button>
           <button id="launchBtn">Launch Fleet</button>
         </div>
 
@@ -74,6 +76,25 @@
             <div><span>Docked</span><b>25</b></div>
             <div><span>Standby</span><b>08</b></div>
           </div>
+        </section>
+
+        <section class="panel trace-panel">
+          <p class="kicker">Trace replay</p>
+          <div class="trace-controls">
+            <label>Scenario<select id="scenarioSelect" aria-label="Scenario selector">
+              <option value="demo">demo</option>
+              <option value="easy">easy</option>
+              <option value="medium">medium</option>
+              <option value="hard">hard</option>
+            </select></label>
+            <label>Policy<select id="policySelect" aria-label="Policy selector">
+              <option value="improved">improved</option>
+              <option value="heuristic">heuristic</option>
+              <option value="naive">naive</option>
+              <option value="random">random</option>
+            </select></label>
+          </div>
+          <div class="trace-status" id="traceStatus">Trace Replay Mode: demo / improved</div>
         </section>
 
         <section class="panel hero-panel">
