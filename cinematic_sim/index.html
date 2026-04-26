@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DroneZ Cinematic Control Tower</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <div>
+          <p class="kicker">DroneZ cinematic simulator</p>
+          <h1>Hybrid Drone Fleet Control Tower</h1>
+          <p class="lede">
+            A film-style mission-control visualization for DroneZ: classical flight systems keep drones
+            stable while RL/AI chooses fleet-level actions like assign, reroute, charge, recover, and prioritize.
+          </p>
+        </div>
+        <div class="hero-metrics">
+          <article><span>Improved reward</span><b id="rewardMetric">89.0</b></article>
+          <article><span>Safety violations</span><b>8 -> 0</b></article>
+          <article><span>Mode</span><b id="modeMetric">Trace</b></article>
+        </div>
+      </header>
+
+      <section class="toolbar">
+        <button id="playBtn">Play Mission</button>
+        <button id="pauseBtn">Pause</button>
+        <button id="resetBtn">Reset</button>
+        <button id="stageBtn">Stage Demo Mode</button>
+        <label>Speed <input id="speedRange" type="range" min="0.4" max="2.2" step="0.1" value="1.0" /></label>
+        <span id="frameBadge">Frame 1 / 1</span>
+      </section>
+
+      <main class="grid">
+        <section class="cinema-card">
+          <div class="screen-header">
+            <div>
+              <p class="kicker">Mission map</p>
+              <h2>2.5D city airspace replay</h2>
+            </div>
+            <div class="legend">
+              <span><i class="safe"></i>Safe</span>
+              <span><i class="caution"></i>Weather</span>
+              <span><i class="blocked"></i>No-fly</span>
+              <span><i class="active"></i>Active route</span>
+            </div>
+          </div>
+          <canvas id="simCanvas" width="1280" height="780" aria-label="DroneZ cinematic mission map"></canvas>
+          <div class="caption">
+            Simulated visualization metadata derived from DroneZ environment traces. Not real aircraft telemetry.
+          </div>
+        </section>
+
+        <aside class="side">
+          <section class="panel">
+            <p class="kicker">Pilot telemetry</p>
+            <h2>Drone systems</h2>
+            <div id="telemetryList" class="telemetry-list"></div>
+          </section>
+
+          <section class="panel">
+            <p class="kicker">Airspace</p>
+            <h2>Weather and risk</h2>
+            <div id="weatherPanel" class="kv"></div>
+          </section>
+
+          <section class="panel">
+            <p class="kicker">Parent server brain</p>
+            <h2>Control tower</h2>
+            <div id="towerPanel" class="tower"></div>
+          </section>
+        </aside>
+      </main>
+
+      <section class="architecture">
+        <article>
+          <p class="kicker">Low-level drone system</p>
+          <h3>Stable flight layer</h3>
+          <ul>
+            <li>PID stability</li>
+            <li>Sensor fusion</li>
+            <li>Kalman/state estimation</li>
+            <li>GPS navigation</li>
+            <li>Rule-based safety</li>
+          </ul>
+        </article>
+        <article>
+          <p class="kicker">High-level RL / AI</p>
+          <h3>Mission decision layer</h3>
+          <ul>
+            <li>Fleet assignment</li>
+            <li>Route adaptation</li>
+            <li>Charging decisions</li>
+            <li>Failed delivery recovery</li>
+            <li>Reward optimization</li>
+          </ul>
+        </article>
+        <article>
+          <p class="kicker">Control tower</p>
+          <h3>Organization brain</h3>
+          <ul>
+            <li>Global route planning</li>
+            <li>Dispatch queue</li>
+            <li>Weather/no-fly alerts</li>
+            <li>Human override standby</li>
+            <li>Enterprise policy weights</li>
+          </ul>
+        </article>
+      </section>
+
+      <section class="learning">
+        <div>
+          <p class="kicker">RL loop</p>
+          <h2>Observation -> Action -> Step -> Reward -> Learn</h2>
+          <p>
+            Observation is the current drone/order/weather/battery state. Action is a JSON command like
+            assign, reroute, charge, deliver, or hold. Reward scores safety, delivery, deadline, battery,
+            and invalid-action behavior.
+          </p>
+        </div>
+        <div class="training-status">
+          <b>Honest training status</b>
+          <span>Deterministic improved policy works.</span>
+          <span>Real GRPO attempt ran earlier but did not improve.</span>
+          <span>Reason: invalid action formatting dominated.</span>
+          <span>Next: action-format SFT + candidate-choice GRPO.</span>
+        </div>
+      </section>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
