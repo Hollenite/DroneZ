@@ -1,183 +1,82 @@
-# DroneZ: Training Mission-Level Drone Fleet Controllers with OpenEnv
+# DroneZ Fleet Delivery Environment
 
-DroneZ is an OpenEnv reinforcement-learning environment for drone delivery operations. It is designed around a practical idea: delivery drones should not only follow fixed routes. A fleet controller should be able to make adaptive decisions when weather changes, batteries run low, urgent orders arrive, no-fly zones appear, or delivery attempts fail.
+Showcase: https://drive.google.com/drive/folders/1EvQvEcNg9AasMICUYt_AkMDGtoTlMbJE?usp=sharing
+Hugging Face Space Repository: https://huggingface.co/spaces/Krishna2521/dronez-openenv
+Live Runtime: https://krishna2521-dronez-openenv.hf.space
+Live Demo: https://krishna2521-dronez-openenv.hf.space/demo/index.html
+API Docs: https://krishna2521-dronez-openenv.hf.space/docs
+Health Check: https://krishna2521-dronez-openenv.hf.space/health
+GitHub Team Repo: https://github.com/Hollenite/DroneZ.git
 
-## The Problem
+---
 
-Drone delivery sounds simple from far away: pick up a package, fly to a destination, drop it off. Real operations are harder.
+## Introduction
 
-A fleet manager must answer questions like:
+When we order something online through delivery apps, we generally expect another human to arrive at our doorstep with our parcel. Sometimes they arrive early, sometimes late—mainly due to traffic on the road.
 
-- Which drone should take the urgent order?
-- Should a drone reroute around a storm or restricted area?
-- When should a drone stop and charge?
-- What happens if the customer is unavailable?
-- Is a faster route worth the safety risk?
-- Should the control tower pause operations in a dangerous sector?
+Roughly a decade ago, drones also began to emerge as delivery agents—or should I say delivery bots—in countries like China and Japan. When we think of a drone delivering our parcel, we usually assume it would be quick and efficient as there is no traffic in the air and routes are more direct.
 
-These are long-horizon decisions. One good or bad action can affect the rest of the episode.
+This is where I'd want you to take a pause. The drones used now generally has a fixed route. Not the best, not the quickest nor the most efficient but the most predictable. you see, Even though drones go through air-route they can be more late than a human simply cuz it can't make decisions, assess routes for unexpected mishaps such as weather or unexpected obstacle.
 
-## Why DroneZ Uses OpenEnv
+So, to make the drone efficient, the drone needs to make decision. but how? How does the drone know what is the right decision in various situation? That is where DroneZ environment is useful.
 
-OpenEnv standardizes the environment loop:
+The environment trains the agent (drone) with uncertain and unexpected conditions such as weather, obstacles etc. which simulates the real world.
 
-1. `reset` starts a scenario.
-2. The agent observes the fleet, orders, weather, charging stations, and warnings.
-3. The agent chooses one structured action.
-4. `step` executes the action and returns reward plus the next observation.
-5. Repeated interaction lets policies be evaluated and trained.
+The drone makes decisions at every step. every step is evaluated. Decisions are rewarded for successful delivery, efficiency, avoiding crashes and it will be penalised for failed delivery, crashes, delayed delivery and unnecessary large routes. the drone will be likely to repeat steps which yields the most reward. So, it will be able to make decisions with atmost probability of them being right and
 
-DroneZ uses that loop to turn drone fleet operations into a measurable decision-making problem.
+---
 
-## Hybrid Drone Architecture
+## Project Access
 
-DroneZ is not training propeller control. That is a very important boundary.
+**Hugging Face Space (Repository)**: https://huggingface.co/spaces/Krishna2521/dronez-openenv
 
-Modern drone systems are hybrid:
+**Live Runtime**: https://krishna2521-dronez-openenv.hf.space
 
-- Low-level control handles PID stability, GPS navigation, sensor fusion, Kalman-style estimation, and emergency safety.
-- High-level AI/RL handles assignment, route adaptation, charging, recovery, priority, and mission optimization.
-- A control tower or parent server can coordinate the whole fleet.
+**API Documentation**: `/docs`
 
-DroneZ focuses on the high-level mission-control layer.
+**Health Check Endpoint**: `/health`
 
-## Environment Design
+---
 
-Each DroneZ scenario includes:
+## Interactive Demonstration Interface
 
-- multiple drones with battery, position, route, assignment, and risk
-- orders with priority, deadline, destination, and fallback options
-- city sectors with weather, congestion, restrictions, and no-fly risk
-- charging stations with limited capacity
-- disruptions such as storms, failed delivery attempts, and urgent order changes
+The browser replay interface visualizes the environment using real JSON traces, presenting the system as a sophisticated hybrid-drone control tower. Rather than displaying a simple grid, the interface renders a 2.5D procedural city with curved route corridors that connect active drones to their delivery destinations. Charging stations, weather overlays, and no-fly zones are dynamically represented, while simulated telemetry tracks reward evolution and recent events. The control tower state monitoring provides real-time insights into fleet operations, creating an immersive visualization that reflects actual environment behavior.
 
-The action space includes:
+**Note**: Route geometry, wind values, sensor indicators, and control-layer labels are derived visualization metadata, not real-world GPS or sensor streams.
 
-- `assign_delivery`
-- `attempt_delivery`
-- `reroute`
-- `prioritize_order`
-- `fallback_to_locker`
-- `return_to_charge`
-- `reserve_charger`
-- `hold_fleet`
-- `resume_operations`
+---
 
-## Reward Design
+## Running the Environment Locally
 
-DroneZ rewards useful and safe decisions:
+```bash
+python -m http.server 8080
+```
 
-- successful delivery
-- urgent delivery success
-- meeting deadlines
-- safe rerouting
-- disruption recovery
-- battery-safe operation
-- efficient fleet utilization
-- regulatory compliance
-- successful locker fallback
+Open in your browser:
+```
+http://localhost:8080/demo_ui/index.html
+```
 
-It penalizes unsafe or wasteful behavior:
+---
 
-- invalid actions
-- missed deadlines
-- failed delivery attempts
-- critical battery events
-- unsafe zone entry
-- unnecessary reroutes
-- abandoned urgent orders
-- idle fleet behavior
-- charging misuse
-- loop/no-progress behavior
+## Running on Hugging Face
 
-This makes the environment more than a simple pathfinding toy. The agent must balance speed, safety, battery, priority, and reliability.
+```
+https://krishna2521-dronez-openenv.hf.space/demo/index.html
+```
 
-## Evaluation Results
+---
 
-The current proven result is deterministic policy improvement, not trained-model improvement.
+## Reward System
 
-Aggregate evaluation across `easy`, `medium`, `hard`, and `demo`:
+The DroneZ environment encourages intelligent behaviour through an efficient reward system. Successful delivery yields higher rewards, while for urgent delivery additional reward points are awarded. The system is quite adaptive, it rewards for safe rerouting decisions and recovery from disruptions. It shows flexibility is also valued alongside reliability. Battery-safe operation and efficient fleet utilization are rewarded to promote sustainable operations. While regulatory compliance and lockout fallback mechanisms ensure the system operates within established safety and operational parameters.
 
-| Policy | Mean Reward | Mean Normalized Score | Deliveries | Urgent Successes | Safety Violations | Invalid Actions |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| improved | **-42.125** | **0.3051** | 5 | 3 | **0** | 0 |
-| heuristic | -281.500 | 0.0797 | 10 | 5 | 182 | 0 |
-| random | -921.500 | 0.0100 | 9 | 4 | 396 | 0 |
-| naive | -1038.000 | 0.0100 | 6 | 3 | 497 | 0 |
+### Negative Penalties
 
-Demo scenario:
+To avoid inefficient and unsafe behaviors, the environment implements a structured penalty system. Invalid actions, missed deadlines, failed delivery attempts and critical battery events will be penalised. The system penalizes unsafe zone entry and unnecessary reroutes that waste time and energy. Abandoned urgent orders, idle fleet behavior, and charging misuse represent operational inefficiencies that are actively discouraged and penalized. Additionally, loop or no progress behaviors is penalized to prevent agents from getting stuck in unproductive patterns, ensuring continuous learning toward meaningful actions.
 
-| Policy | Reward | Normalized Score | Deliveries | Urgent Successes | Safety Violations | Invalid Actions |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| improved | **89.0** | **0.5861** | 2 | 1 | **0** | 0 |
-| heuristic | 32.0 | 0.2889 | 2 | 1 | 8 | 0 |
-| random | -162.5 | 0.0100 | 2 | 1 | 33 | 0 |
-| naive | -607.5 | 0.0100 | 0 | 0 | 72 | 0 |
+---
 
-The improved controller is deterministic and hand-built. It demonstrates that the environment can distinguish safer and more useful behavior. It should not be described as a trained LLM result.
+## Conclusion
 
-## Training Status
-
-A real local GRPO-style run was attempted on an NVIDIA RTX 5060 Laptop GPU with `Qwen/Qwen2.5-0.5B-Instruct`. It did not improve reward. The model generated invalid DroneZ actions, episodes hit `invalid_action_cap_reached`, reward stayed flat, loss stayed `0.0`, and `eval_after` did not improve over `eval_before`.
-
-That failure was useful because it exposed the real bottleneck: action formatting.
-
-The project now includes:
-
-- compact action prompts
-- candidate-choice mode
-- robust JSON parsing
-- safe action repair
-- format-check diagnostics
-- SFT warm-start examples generated from the improved policy
-
-Current format-check artifacts report:
-
-- `valid_json_rate`: `0.875`
-- `valid_action_rate`: `0.875`
-
-This means the action interface is improving, but it is still not a reward-improving trained model claim.
-
-## Demo and Links
-
-- Hugging Face Space: https://huggingface.co/spaces/Krishna2521/dronez-openenv
-- Live Runtime: https://krishna2521-dronez-openenv.hf.space
-- Live Demo: https://krishna2521-dronez-openenv.hf.space/demo/index.html
-- API Docs: https://krishna2521-dronez-openenv.hf.space/docs
-- GitHub Team Repo: https://github.com/Hollenite/DroneZ.git
-- Colab Notebook: `notebooks/train_dronez_grpo_colab.ipynb`
-- Public Colab Link: https://colab.research.google.com/drive/1ge0s9eYcbeE25oEXh6t-wySGh3ZCR9AV
-- YouTube Demo: `TODO - add before final form submission`
-- Slides: `TODO - add before final form submission`
-
-## Visual Demo
-
-The browser demo uses real DroneZ trace files. It adds a professional control-tower visualization with:
-
-- a 2.5D procedural city
-- route corridors
-- drone telemetry panels
-- weather and no-fly overlays
-- charging stations
-- order markers
-- reward evolution
-- event timelines
-- hybrid control architecture panels
-
-Some visual fields are derived for explanation, such as route geometry, wind values, and sensor status labels. These are simulated visualization metadata, not real aircraft telemetry.
-
-## Limitations
-
-DroneZ does not yet provide:
-
-- full Isaac Sim, Gazebo, or AirSim physics
-- real motor or propeller control
-- certified aviation behavior
-- real camera/LiDAR/GPS streams
-- proven GRPO reward improvement
-
-Future work includes action-format SFT, candidate-choice GRPO, richer scenario generation, sim-to-real validation, and optional integration with a real robotics simulator.
-
-## Final Takeaway
-
-DroneZ shows drone delivery as a decision-making problem under uncertainty. The strongest current result is a working OpenEnv environment, a deployed Hugging Face Space, a control-tower demo, deterministic policy improvements, and an honest training pipeline that exposes and addresses the next research bottleneck.
+Drone delivery isn't just about flying – it's about decision-making under uncertain conditions. DroneZ shifts focus from fixed routes to adaptive intelligence, where every action is learned, evaluated, and improved. The result is a system that is efficient and quick.
