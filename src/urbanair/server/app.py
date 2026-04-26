@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -46,10 +46,6 @@ def _ensure_default_session(task_id: str | None = None) -> tuple[str, dict[str, 
 if DEMO_DIR.exists():
     app.mount("/demo", StaticFiles(directory=DEMO_DIR, html=True), name="demo")
 
-if ARTIFACTS_DIR.exists():
-    app.mount("/artifacts", StaticFiles(directory=ARTIFACTS_DIR), name="artifacts")
-
-
 def runtime_manifest() -> dict[str, object]:
     return {
         "name": "DroneZ OpenEnv Runtime",
@@ -88,6 +84,17 @@ def runtime() -> dict[str, object]:
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/artifacts/traces/{trace_name}")
+def trace_artifact(trace_name: str):
+    """Serve trace files with a clear 404 instead of a silent static fallback miss."""
+    if "/" in trace_name or "\\" in trace_name or not trace_name.endswith(".json"):
+        raise HTTPException(status_code=404, detail="Trace artifact not found")
+    path = ARTIFACTS_DIR / "traces" / trace_name
+    if not path.exists():
+        raise HTTPException(status_code=404, detail=f"Trace artifact not found: {trace_name}")
+    return FileResponse(path, media_type="application/json")
 
 
 @app.get("/tasks")
@@ -174,3 +181,7 @@ def step_session(session_id: str, payload: StepRequest) -> dict[str, object]:
         "done": done,
         "info": info,
     }
+
+
+if ARTIFACTS_DIR.exists():
+    app.mount("/artifacts", StaticFiles(directory=ARTIFACTS_DIR), name="artifacts")
