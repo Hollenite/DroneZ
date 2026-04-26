@@ -57,6 +57,7 @@ DroneZ turns drone delivery operations into a reward-driven OpenEnv environment 
 | Public Colab Notebook | https://colab.research.google.com/drive/1ge0s9eYcbeE25oEXh6t-wySGh3ZCR9AV |
 | Local Notebook | [notebooks/train_dronez_grpo_colab.ipynb](notebooks/train_dronez_grpo_colab.ipynb) |
 | Blog / Writeup | [BLOG.md](BLOG.md) |
+| Showcase Folder | https://drive.google.com/drive/folders/1EvQvEcNg9AasMICUYt_AkMDGtoTlMbJE?usp=sharing |
 | Pitch | [PITCH.md](PITCH.md) |
 | Submission Checklist | [SUBMISSION_CHECKLIST.md](SUBMISSION_CHECKLIST.md) |
 | Full Documentation | [docs/README.md](docs/README.md) |
